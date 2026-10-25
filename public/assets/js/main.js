@@ -162,9 +162,22 @@
         events: {
           onReady: (e) => { e.target.mute(); e.target.playVideo(); },
           onStateChange: (e) => {
-            if (e.data === YT.PlayerState.PLAYING) host.classList.add("is-playing");
-            // loop+playlist usually handles this, but belt and braces.
-            if (e.data === YT.PlayerState.ENDED) e.target.playVideo();
+            const S = YT.PlayerState;
+
+            // BUFFERING counts as playing — hiding the frame mid-stream would
+            // flash the poster back every time the stream hiccups.
+            if (e.data === S.PLAYING || e.data === S.BUFFERING) {
+              host.classList.add("is-playing");
+              return;
+            }
+
+            // Anything else means YouTube has drawn its own paused UI, play
+            // button and all. Hide the frame so the poster covers it, then
+            // try to resume.
+            host.classList.remove("is-playing");
+            if (e.data === S.ENDED || e.data === S.PAUSED || e.data === S.CUED) {
+              try { e.target.playVideo(); } catch { /* nothing to do */ }
+            }
           },
         },
       });
@@ -257,9 +270,7 @@
         .split(/\s+/)
         .map((word) => {
           const letters = Array.from(word)
-            .map((ch) =>
-              `<span class="ch" style="--d:${i++}" data-final="${esc(ch)}">${esc(ch)}</span>`
-            )
+            .map((ch) => `<span class="ch" style="--d:${i++}">${esc(ch)}</span>`)
             .join("");
           return `<span class="word">${letters}</span>`;
         })
@@ -268,7 +279,7 @@
       title.setAttribute("aria-label", SITE.name);
       $$(".ch", title).forEach((el) => el.setAttribute("aria-hidden", "true"));
 
-      glitchReveal(title);
+      revealTitle(title);
     }
 
     // Terminal-style status strip above the name. Everything here is derived,
@@ -346,55 +357,15 @@
   }
 
   /**
-   * Glitch reveal for the name.
-   *
-   * Each letter cycles through junk glyphs before locking to its real
-   * character, left to right. Every letter is pinned to its final width first
-   * (measured once the webfont has loaded), so the scramble cannot reflow the
-   * line — without that the whole name twitches sideways and reads as broken
-   * rather than deliberate. The CSS adds the slice/skew per letter and a tear
-   * bar sweeping down over the top.
+   * Kinetic reveal for the name — the motion itself lives in CSS; this just
+   * waits for the webfont before starting, so letters do not animate in using
+   * the fallback face and then jump when Syncopate arrives.
    */
-  function glitchReveal(title) {
-    const letters = $$(".ch", title);
-    if (!letters.length) return;
+  function revealTitle(title) {
+    const start = () => title.classList.add("is-revealed");
 
-    if (reduceMotion) {
-      title.classList.add("is-revealed");
-      return;
-    }
+    if (reduceMotion) { start(); return; }
 
-    const GLYPHS = "▚▞▜▛█▓▒░/\\|<>#%&@*+=-_01XZ";
-    const pick = () => GLYPHS[(Math.random() * GLYPHS.length) | 0];
-
-    const start = () => {
-      // Pin widths so swapping glyphs cannot shift the layout.
-      letters.forEach((el) => {
-        el.style.width = el.getBoundingClientRect().width + "px";
-      });
-
-      title.classList.add("is-revealed");
-
-      letters.forEach((el, i) => {
-        const final = el.dataset.final;
-        const spins = 5 + (i % 4);
-        let n = 0;
-
-        window.setTimeout(() => {
-          const id = window.setInterval(() => {
-            if (++n >= spins) {
-              el.textContent = final;
-              el.classList.add("is-set");
-              window.clearInterval(id);
-              return;
-            }
-            el.textContent = pick();
-          }, 42);
-        }, 90 + i * 55);
-      });
-    };
-
-    // Measuring before the webfont lands would pin the fallback's widths.
     if (document.fonts && document.fonts.ready) {
       document.fonts.ready.then(start).catch(start);
     } else {
@@ -422,9 +393,9 @@
 
     bar.innerHTML = buttons
       .map(
-        (b) =>
+        (b, i) =>
           `<button class="filter" type="button" data-cat="${esc(b.id)}"` +
-          ` aria-pressed="${b.id === activeCat}">${esc(b.label)}` +
+          ` style="--fi:${i}" aria-pressed="${b.id === activeCat}">${esc(b.label)}` +
           `<span class="filter__n">${counts[b.id]}</span></button>`
       )
       .join("");
@@ -433,6 +404,19 @@
       const btn = e.target.closest("[data-cat]");
       if (btn) setCategory(btn.dataset.cat);
     });
+
+    // Replay the left-to-right cascade each time the pointer enters the bar.
+    // Removing the class and forcing a reflow is what lets the animation
+    // restart; without the reflow the browser coalesces both changes and
+    // nothing happens on the second pass.
+    if (!reduceMotion && window.matchMedia("(hover: hover)").matches) {
+      bar.addEventListener("pointerenter", () => {
+        bar.classList.remove("is-live");
+        void bar.offsetWidth;
+        bar.classList.add("is-live");
+      });
+      bar.addEventListener("pointerleave", () => bar.classList.remove("is-live"));
+    }
   }
 
   function setCategory(cat) {

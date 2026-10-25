@@ -17,9 +17,16 @@
   --ink-2:      #a4a4aa;
   --ink-3:      #6b6b73;
 
-  /* The single accent. One colour, used sparingly. */
-  --accent:     #ff5c35;
-  --accent-dim: rgba(255, 92, 53, .14);
+  /* The single accent. One colour, used sparingly.
+     Amber, picked over the usual portfolio orange because amber monochrome
+     monitors were a real thing — it earns the CRT theme instead of decorating
+     it. Alternatives that work on this background: #d4ff3f (acid),
+     #00ff9f (phosphor green), #22d3ee (cyan). */
+  --accent:     #ffb000;
+  --accent-dim: rgba(255, 176, 0, .13);
+
+  /* Amber is bright: text sitting ON the accent must be dark, not white. */
+  --on-accent:  #0b0b0c;
 
   /* Type
      --font-display is the futuristic face, used only for the name, section
@@ -97,7 +104,7 @@ a { color: inherit; text-decoration: none; }
 
 ul, ol { list-style: none; }
 
-::selection { background: var(--accent); color: #fff; }
+::selection { background: var(--accent); color: var(--on-accent); }
 
 :focus-visible {
   outline: 2px solid var(--accent);
@@ -460,10 +467,9 @@ ul, ol { list-style: none; }
   line-height: 1.02;
   letter-spacing: -.01em;
   text-transform: uppercase;
-  /* Faint RGB split, as if the phosphors are slightly misaligned. */
-  text-shadow:
-    -.018em 0 rgba(255, 72, 60, .30),
-     .018em 0 rgba(70, 215, 255, .24);
+  /* Syncopate ships upright only, so this is a synthetic oblique. At this size
+     it reads as intentional italic rather than a browser fudge. */
+  font-style: italic;
   animation: crt-flicker 6.5s steps(1) infinite;
 }
 
@@ -480,46 +486,57 @@ ul, ol { list-style: none; }
   99%           { opacity: .92; }
 }
 
-/* ---- Glitch reveal ----
-   Letters start hidden and are slammed into place with a skew and a couple of
-   hard steps, left to right, while JS scrambles the glyphs underneath. The
-   steps() timing is the point: a smooth ease reads as a slide, a stepped one
-   reads as a signal locking on. */
+/* ---- Kinetic reveal ----
+   Letters rise, rotate and overshoot into place, left to right. The energy
+   comes from the 58% keyframe, which travels past the resting position and
+   settles back — a straight ease to the end reads as a slide, not a snap. */
 .hero__title .ch {
   display: inline-block;
-  text-align: center;
   opacity: 0;
+  transform-origin: 50% 90%;
 }
 
 .hero__title.is-revealed .ch {
-  animation: ch-glitch .5s steps(2) forwards;
-  animation-delay: calc(var(--d, 0) * 55ms + 90ms);
+  animation: ch-kinetic .78s cubic-bezier(.19, 1, .3, 1) forwards;
+  animation-delay: calc(var(--d, 0) * 42ms + 80ms);
 }
 
-@keyframes ch-glitch {
-  0%   { opacity: 0;  transform: translate3d(-.2em, .08em, 0) skewX(26deg); }
-  35%  { opacity: 1;  transform: translate3d(.09em, -.04em, 0) skewX(-15deg); }
-  65%  { opacity: .7; transform: translate3d(-.04em, .02em, 0) skewX(8deg); }
-  100% { opacity: 1;  transform: none; }
+@keyframes ch-kinetic {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, .9em, 0) rotate(-11deg) scale(.78);
+  }
+  58% {
+    opacity: 1;
+    transform: translate3d(0, -.1em, 0) rotate(3deg) scale(1.07);
+  }
+  78% {
+    transform: translate3d(0, .02em, 0) rotate(-1deg) scale(.985);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
 }
 
-/* A torn scan band sweeping down across the name as it resolves. */
+/* Underline that draws itself across once the letters have landed. */
 .hero__title.is-revealed::after {
   content: "";
   position: absolute;
-  left: -3%; right: -3%;
-  height: 11%;
-  pointer-events: none;
-  background: linear-gradient(to bottom, transparent, rgba(255, 255, 255, .55), transparent);
-  mix-blend-mode: overlay;
-  animation: title-tear 1.15s steps(7) 1 forwards;
+  left: 0;
+  bottom: -.1em;
+  height: 2px;
+  width: 100%;
+  background: var(--accent);
+  transform-origin: 0 50%;
+  animation: title-rule .9s cubic-bezier(.19, 1, .3, 1) forwards;
+  animation-delay: .5s;
 }
 
-@keyframes title-tear {
-  0%   { top: -14%; opacity: 0; }
-  12%  { opacity: .9; }
-  70%  { opacity: .55; }
-  100% { top: 106%; opacity: 0; }
+@keyframes title-rule {
+  0%   { transform: scaleX(0); opacity: 0; }
+  30%  { opacity: 1; }
+  100% { transform: scaleX(1); opacity: .55; }
 }
 
 .hero__meta {
@@ -611,9 +628,9 @@ ul, ol { list-style: none; }
 .pill--accent:hover {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 }
-.pill--accent:hover svg { fill: #fff; }
+.pill--accent:hover svg { fill: var(--on-accent); }
 
 /* Scroll hint */
 .scroll-hint {
@@ -689,6 +706,8 @@ ul, ol { list-style: none; }
 
 .filter {
   position: relative;
+  isolation: isolate;        /* so the wipe can sit behind the label */
+  overflow: hidden;
   flex: 0 0 auto;
   padding: .55rem 1.15rem;
   border: 1px solid var(--line);
@@ -698,15 +717,54 @@ ul, ol { list-style: none; }
   white-space: nowrap;
   transition: color var(--fast) var(--ease),
               border-color var(--fast) var(--ease),
-              background var(--fast) var(--ease);
+              opacity .35s var(--ease),
+              transform .35s var(--ease);
 }
-.filter:hover { color: var(--ink); border-color: var(--line-str); }
+
+/* Hover fill that wipes in from the left rather than cross-fading. */
+.filter::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--accent);
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  transition: transform .45s var(--ease);
+}
+
+.filter:not([aria-pressed="true"]):hover::before { transform: scaleX(1); }
+.filter:not([aria-pressed="true"]):hover {
+  color: var(--on-accent);
+  border-color: var(--accent);
+}
+
+/* Hovering anywhere in the bar focuses the one under the cursor. */
+.filters:hover .filter { opacity: .55; }
+.filters .filter:hover,
+.filters .filter[aria-pressed="true"] { opacity: 1; }
 
 .filter[aria-pressed="true"] {
   background: var(--ink);
   border-color: var(--ink);
   color: var(--bg);
   font-weight: 500;
+}
+
+/* Entering the bar runs a left-to-right cascade across the pills, so the set
+   announces itself instead of sitting inert until you land on one. */
+/* `backwards`, not `both`: the start state should hold during the stagger
+   delay, but the end state must NOT persist — `both` would pin opacity at 1
+   and defeat the focus-dim below, which is a plain CSS declaration. */
+.filters.is-live .filter {
+  animation: pill-charge .5s var(--ease) backwards;
+  animation-delay: calc(var(--fi, 0) * 52ms);
+}
+
+@keyframes pill-charge {
+  0%   { opacity: .35; transform: translate3d(-6px, 0, 0) scale(.97); }
+  55%  { opacity: 1;   transform: translate3d(0, 0, 0) scale(1.03); }
+  100% { opacity: 1;   transform: none; }
 }
 
 .filter__n {
@@ -729,9 +787,49 @@ ul, ol { list-style: none; }
 
 /* ---------- 9. Work grid ---------- */
 .grid {
+  /* Gaps are named so the registration marks can sit exactly halfway into
+     them rather than guessing at an offset. */
+  --gx: clamp(1rem, 1.8vw, 2rem);
+  --gy: clamp(1.5rem, 2.6vw, 3.2rem);
+
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 330px), 1fr));
-  gap: clamp(1.5rem, 2.6vw, 3.2rem) clamp(1rem, 1.8vw, 2rem);
+  gap: var(--gy) var(--gx);
+}
+
+/* Registration marks in the dead space between cards. Each sits on the grid
+   line at a card's top-left corner, so they line up into a regular lattice
+   and read as deliberate rather than scattered. Crossing to an × on hover is
+   the only movement they ever make. */
+.card::before {
+  content: "+";
+  position: absolute;
+  left: calc(var(--gx) / -2);
+  top: calc(var(--gy) / -2);
+  z-index: 3;
+  font-family: var(--mono);
+  font-size: .78rem;
+  line-height: 1;
+  color: var(--ink-3);
+  opacity: .62;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  transition: color .5s var(--ease),
+              opacity .5s var(--ease),
+              transform .5s var(--ease);
+}
+
+.card:hover::before,
+.card:focus-within::before {
+  color: var(--accent);
+  opacity: 1;
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+/* On phones the single column makes a vertical dotted rail rather than a
+   lattice, which looks like a mistake. Hide them. */
+@media (max-width: 700px) {
+  .card::before { display: none; }
 }
 
 @media (min-width: 900px) {
@@ -837,7 +935,9 @@ ul, ol { list-style: none; }
   background: var(--accent);
   border-color: var(--accent);
 }
-.card__play svg { width: 36%; translate: 8% 0; fill: #fff; }
+.card__play svg { width: 36%; translate: 8% 0; fill: #fff; transition: fill .45s var(--ease); }
+.card:hover .card__play svg,
+.card:focus-within .card__play svg { fill: var(--on-accent); }
 
 /* Deliverable badge, top-left of the frame */
 .card__type {
@@ -1151,7 +1251,7 @@ ul, ol { list-style: none; }
               color var(--fast) var(--ease),
               border-color var(--fast) var(--ease);
 }
-.lb__close:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+.lb__close:hover { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
 
 /* ---------- 13. Scroll reveals ---------- */
 .reveal {
