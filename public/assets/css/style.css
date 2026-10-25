@@ -62,50 +62,31 @@
   --radius: 3px;
 }
 
-/* ---------- 1b. The CRT ripple ----------
-   Thumbnails and filter pills sit under a scanline overlay when idle. On
-   hover a feathered circle opens from wherever the pointer entered and wipes
-   that overlay away, so the element appears to resolve from broadcast to
-   clean. The radius is a registered custom property because plain custom
-   properties cannot be transitioned — without @property the mask would jump
-   straight to its end state instead of travelling. */
-@property --crt-r {
-  syntax: "<percentage>";
-  inherits: false;
-  initial-value: 0%;
-}
-
-.crt {
+/* ---------- 1b. Hover signal ----------
+   Nothing is laid over thumbnails or pills at rest — they are simply clean.
+   On hover a single bright band sweeps through once, which reads as a signal
+   catching rather than as a permanent screen texture. Fast and quiet: this
+   is a flicker of acknowledgement, not an effect. */
+.fx {
   position: absolute;
   inset: 0;
   z-index: 1;
+  opacity: 0;
   pointer-events: none;
-  opacity: 1;
+  background: linear-gradient(
+    to bottom,
+    transparent 40%,
+    rgba(255, 255, 255, .5) 49%,
+    rgba(255, 255, 255, .5) 51%,
+    transparent 60%
+  );
+}
 
-  /* Scanlines, plus a much fainter vertical grille — the two together read as
-     a screen rather than as stripes laid over a picture. */
-  background-image:
-    repeating-linear-gradient(to bottom,
-      rgba(0, 0, 0, .34) 0 1px,
-      rgba(0, 0, 0, 0)  1px 3px),
-    repeating-linear-gradient(to right,
-      rgba(120, 180, 255, .05) 0 1px,
-      rgba(0, 0, 0, 0)         1px 3px);
-
-  --crt-r: 0%;
-  -webkit-mask-image: radial-gradient(circle at var(--crt-x, 50%) var(--crt-y, 50%),
-    transparent 0%,
-    transparent var(--crt-r),
-    #000 calc(var(--crt-r) + 26%));
-  mask-image: radial-gradient(circle at var(--crt-x, 50%) var(--crt-y, 50%),
-    transparent 0%,
-    transparent var(--crt-r),
-    #000 calc(var(--crt-r) + 26%));
-
-  /* opacity is the fallback: where @property is unsupported the mask will not
-     travel, but the overlay still fades out rather than snapping. */
-  transition: --crt-r .85s cubic-bezier(.22, 1, .36, 1),
-              opacity .85s cubic-bezier(.22, 1, .36, 1);
+@keyframes fx-sweep {
+  0%   { opacity: 0;   transform: translateY(-62%); }
+  18%  { opacity: .85; }
+  80%  { opacity: .45; }
+  100% { opacity: 0;   transform: translateY(62%); }
 }
 
 /* ---------- 2. Reset ---------- */
@@ -858,20 +839,15 @@ ul, ol { list-style: none; }
 
 .filter__t { display: inline-block; }
 
-/* Idle the pill sits under the scanline overlay. Hover scales it up and opens
-   the overlay away from the pointer — the same gesture as the thumbnails, so
-   the whole page answers the mouse one way. */
+/* Same gesture as the thumbnails: scale up, one bright sweep through. */
 .filter:hover {
   color: var(--ink);
   border-color: var(--line-str);
   transform: scale(1.06);
 }
 
-.filter:hover .crt,
-.filter:focus-visible .crt {
-  --crt-r: 140%;
-  opacity: 0;
-}
+.filter:hover .fx,
+.filter:focus-visible .fx { animation: fx-sweep .45s var(--ease-io) 1; }
 
 /* Hovering anywhere in the bar focuses the one under the cursor. Scoped to
    :hover so these never apply at rest — otherwise the active pill would be
@@ -886,8 +862,8 @@ ul, ol { list-style: none; }
   color: var(--bg);
   font-weight: 500;
 }
-/* The active pill is already the loud one — no screen texture over it. */
-.filter[aria-pressed="true"] .crt { display: none; }
+/* The active pill is already the loud one. */
+.filter[aria-pressed="true"] .fx { display: none; }
 
 /* One-time entrance when the work section scrolls in. Runs once on arrival,
    not on every hover.
@@ -1034,28 +1010,25 @@ ul, ol { list-style: none; }
   transition: opacity var(--slow) var(--ease);
 }
 
-/* Idle thumbnails are muted and sit under the scanline overlay; hover brings
-   them back to full colour as the overlay ripples away. */
+/* Thumbnails sit clean at rest — a gentle lift in contrast is the only thing
+   hover changes, besides the one-shot sweep. */
 .card__img {
   width: 100%; height: 100%;
   object-fit: cover;
   transform: scale(1.012);
-  filter: saturate(.72) contrast(1.04) brightness(.92);
+  filter: saturate(.94);
   transition: transform 1.1s var(--ease),
               opacity .5s var(--ease),
-              filter .85s cubic-bezier(.22, 1, .36, 1);
+              filter .6s cubic-bezier(.22, 1, .36, 1);
 }
 
 .card:hover .card__img,
-.card:focus-within .card__img { filter: none; }
+.card:focus-within .card__img { filter: saturate(1.04) brightness(1.03); }
 
-.card:hover .crt,
-.card:focus-within .crt {
-  --crt-r: 110%;
-  opacity: 0;
-}
+.card:hover .fx,
+.card:focus-within .fx { animation: fx-sweep .52s var(--ease-io) 1; }
 
-/* The badge and the play affordance must stay above the screen texture. */
+/* The badge and the play affordance must stay above the sweep. */
 .card__type, .card__play { z-index: 2; }
 .card__img[hidden] { display: none; }
 
@@ -1164,6 +1137,64 @@ ul, ol { list-style: none; }
   .about { grid-template-columns: 1.25fr 1fr; }
 }
 
+/* ---- Portrait ----
+   Deliberately small. Same scanline + veil treatment as the hero video so it
+   reads as another feed on the same screen rather than a stock headshot. */
+.portrait {
+  position: relative;
+  width: clamp(116px, 14vw, 168px);
+  aspect-ratio: 1;
+  margin-bottom: clamp(1.5rem, 3vw, 2.2rem);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+
+  opacity: 0;
+  transform: translateY(20px) scale(.94);
+  transition: opacity .9s var(--ease) .15s, transform .9s var(--ease) .15s;
+}
+.about.is-in .portrait { opacity: 1; transform: none; }
+
+.portrait img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  filter: grayscale(1) contrast(1.08) brightness(.95);
+  transition: filter .7s var(--ease), transform 1.1s var(--ease);
+}
+.portrait:hover img { filter: grayscale(.25) contrast(1.02); transform: scale(1.04); }
+
+.portrait__scan {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: .5;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0) 0 2px,
+    rgba(0, 0, 0, .34) 2px 3px
+  );
+}
+
+.portrait__veil {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(110% 90% at 50% 40%, transparent 45%, rgba(9, 9, 10, .55) 100%),
+    linear-gradient(to bottom, rgba(9, 9, 10, .12), rgba(9, 9, 10, .34));
+}
+
+/* The same drifting refresh band as the hero. */
+.portrait__scan::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0;
+  height: 22%;
+  background: linear-gradient(to bottom, transparent, rgba(185, 225, 255, .085), transparent);
+  animation: crt-roll 6s linear infinite;
+}
+
 .about__lead {
   font-size: var(--t-xl);
   font-weight: 200;
@@ -1209,23 +1240,61 @@ ul, ol { list-style: none; }
 /* ---------- 11. Contact / footer ---------- */
 .contact { border-top: 1px solid var(--line); }
 
-.contact__mail {
-  display: inline-block;
-  margin-block: clamp(1.5rem, 3vw, 2.5rem) clamp(2rem, 4vw, 3rem);
-  font-size: clamp(1.5rem, .6rem + 4.2vw, 4rem);
+/* ---- Contact ----
+   One sentence, one link. The address lives inside the line rather than
+   sitting under it as a bare mailto, which is what made it feel like a
+   footer afterthought. */
+.contact__cta {
+  display: block;
+  margin-block: clamp(1.2rem, 2.5vw, 2rem) clamp(2rem, 4vw, 3rem);
+  font-size: clamp(1.35rem, .6rem + 3.1vw, 3.2rem);
   font-weight: 200;
-  letter-spacing: -.035em;
-  line-height: 1.05;
-  word-break: break-word;
-  background-image: linear-gradient(var(--accent), var(--accent));
-  background-size: 0% 1px;
-  background-position: 0 100%;
-  background-repeat: no-repeat;
-  transition: background-size .6s var(--ease), color var(--fast) var(--ease);
+  line-height: 1.12;
+  letter-spacing: -.03em;
+  color: var(--ink-2);
+  transition: color .4s var(--ease);
 }
-.contact__mail:hover {
+.contact__cta:hover { color: var(--ink); }
+
+.contact__line { display: block; }
+
+.contact__mail {
+  position: relative;
+  color: var(--ink);
+  word-break: break-word;
+  transition: color .4s var(--ease);
+}
+
+/* Rule that wipes in under the address on hover. */
+.contact__mail::after {
+  content: "";
+  position: absolute;
+  left: 0; bottom: -.06em;
+  width: 100%; height: 2px;
+  background: var(--accent);
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  transition: transform .55s var(--ease);
+}
+.contact__cta:hover .contact__mail { color: var(--accent); }
+.contact__cta:hover .contact__mail::after { transform: scaleX(1); }
+
+.contact__arrow {
+  display: inline-block;
+  width: .72em;
+  margin-left: .3em;
+  vertical-align: baseline;
   color: var(--accent);
-  background-size: 100% 1px;
+  opacity: 0;
+  transform: translateX(-.35em);
+  transition: opacity .45s var(--ease), transform .45s var(--ease);
+}
+.contact__arrow svg { width: 100%; height: auto; }
+
+.contact__cta:hover .contact__arrow,
+.contact__cta:focus-visible .contact__arrow {
+  opacity: 1;
+  transform: translateX(.1em);
 }
 
 .footer {
@@ -1453,8 +1522,10 @@ ul, ol { list-style: none; }
 
   /* Keep the screen texture — it is a look, not a movement — but drop the
      ripple so it simply disappears on hover. */
-  .crt { transition: none; }
+  .fx { animation: none; opacity: 0; }
   .card__img { filter: none; }
+  .portrait { opacity: 1; transform: none; }
+  .portrait__scan::after { display: none; }
   .grain { display: none; }
 
   /* CRT motion is decorative — drop the moving parts, keep the static

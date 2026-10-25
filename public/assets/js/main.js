@@ -271,6 +271,13 @@
       el.setAttribute("href", "mailto:" + SITE.email);
     });
 
+    // The contact sentence: address inside the text, whole line clickable.
+    $$("[data-site-email-text]").forEach((el) => { el.textContent = SITE.email; });
+    $$("[data-contact-cta]").forEach((el) => {
+      el.setAttribute("href", "mailto:" + SITE.email);
+      el.setAttribute("aria-label", "Email " + SITE.email);
+    });
+
     // Split the name into characters so each can animate in on its own delay.
     // Characters are grouped per word, so a long name can still wrap between
     // words on narrow screens instead of overflowing.
@@ -424,7 +431,7 @@
           ` style="--fi:${i}" aria-pressed="${b.id === activeCat}">` +
           `<span class="filter__t">${esc(b.label)}</span>` +
           `<span class="filter__n">${counts[b.id]}</span>` +
-          `<span class="crt" aria-hidden="true"></span></button>`
+          `<span class="fx" aria-hidden="true"></span></button>`
       )
       .join("");
 
@@ -435,36 +442,6 @@
 
   }
 
-  /**
-   * Points each CRT overlay's ripple at wherever the pointer crossed into the
-   * element, so the screen appears to clear from under the cursor rather than
-   * always from the middle. Delegated at the document level because cards are
-   * rebuilt on every filter change.
-   */
-  function wireCrtRipple() {
-    if (reduceMotion || !window.matchMedia("(hover: hover)").matches) return;
-
-    document.addEventListener("pointerover", (e) => {
-      // A card's stretched link sits on top of the media and is its sibling,
-      // not its child — so resolve up to the card first, then back down to
-      // the media box. Going straight for .card__media never matches.
-      const card = e.target.closest(".card");
-      const host = card ? $(".card__media", card) : e.target.closest(".filter");
-      if (!host) return;
-
-      const crt = $(".crt", host);
-      if (!crt) return;
-
-      const r = host.getBoundingClientRect();
-      if (!r.width || !r.height) return;
-
-      const x = ((e.clientX - r.left) / r.width) * 100;
-      const y = ((e.clientY - r.top) / r.height) * 100;
-
-      crt.style.setProperty("--crt-x", x.toFixed(1) + "%");
-      crt.style.setProperty("--crt-y", y.toFixed(1) + "%");
-    });
-  }
 
   function setCategory(cat) {
     if (cat === activeCat) return;
@@ -517,7 +494,7 @@
       `<article class="card${p.featured ? " is-featured" : ""}" style="--i:${i}">` +
         `<div class="card__media">` +
           thumb + badge +
-          `<span class="crt" aria-hidden="true"></span>` +
+          `<span class="fx" aria-hidden="true"></span>` +
           `<span class="card__play"><span>` +
             `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>` +
           `</span></span>` +
@@ -1067,7 +1044,6 @@
   buildFilters();
   renderGrid();
   wireHoverPreview();
-  wireCrtRipple();
   wireMagneticGrid();
   wireLightbox();
   wireScroll();

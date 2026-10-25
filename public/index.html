@@ -33,7 +33,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&family=Share+Tech+Mono&family=Inter+Tight:wght@200;300;400;500;600&display=swap" rel="stylesheet">
 
 <!-- Bump ?v= when you change CSS or JS, to push past browser caches. -->
-<link rel="stylesheet" href="assets/css/style.css?v=20">
+<link rel="stylesheet" href="assets/css/style.css?v=21">
 </head>
 
 <body>
@@ -150,6 +150,15 @@
 
       <div class="about reveal">
         <div>
+          <!-- Portrait carries the same scanline + veil treatment as the hero
+               video, so it reads as part of the same screen. -->
+          <figure class="portrait">
+            <img src="assets/img/portrait.jpg" width="400" height="400"
+                 loading="lazy" decoding="async" alt="A.Burak Koç">
+            <span class="portrait__scan" aria-hidden="true"></span>
+            <span class="portrait__veil" aria-hidden="true"></span>
+          </figure>
+
           <!-- Edit this lead paragraph and the two below directly. -->
           <p class="about__lead">
             I direct and animate. Half the job is deciding which of those a project
@@ -181,9 +190,20 @@
   <!-- ======================= CONTACT ======================= -->
   <section class="section contact" id="contact">
     <div class="wrap">
-      <span class="eyebrow">Available for commissions</span>
-      <br>
-      <a class="contact__mail" data-site-email href="#">hello@example.com</a>
+      <!-- The whole sentence is the link; the address is part of it rather
+           than a separate line underneath. -->
+      <a class="contact__cta" data-contact-cta href="#">
+        <span class="contact__line">Available for commissions &mdash;</span>
+        <span class="contact__line">
+          <span class="contact__mail" data-site-email-text>hello@example.com</span>
+          <span class="contact__arrow" aria-hidden="true">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M5 12h13M13 6l6 6-6 6" fill="none" stroke="currentColor"
+                    stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </span>
+        </span>
+      </a>
 
       <div class="hero__links" data-site-links></div>
 
@@ -222,8 +242,8 @@
   </div>
 </div>
 
-<script src="assets/js/data.js?v=20"></script>
-<script src="assets/js/main.js?v=20"></script>
+<script src="assets/js/data.js?v=21"></script>
+<script src="assets/js/main.js?v=21"></script>
 
 </body>
 </html>
