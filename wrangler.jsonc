@@ -19,6 +19,19 @@
     "not_found_handling": "404-page"
   },
 
+  // Attaching the domain here means `wrangler deploy` creates the custom
+  // domain and its DNS record, and keeps them in sync. To also serve
+  // www.aburakkoc.com, add a second entry with that pattern.
+  "routes": [
+    { "pattern": "aburakkoc.com", "custom_domain": true }
+  ],
+
+  // Attaching a custom domain turns the portfolio.*.workers.dev URL off by
+  // default, which is what we want: one canonical hostname, no duplicate copy
+  // of the site for search engines to find. Set this to true if you ever want
+  // the workers.dev URL back as a staging link.
+  "workers_dev": false,
+
   "observability": {
     "enabled": true
   }

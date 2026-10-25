@@ -1,0 +1,13 @@
+{
+  "name": "portfolio",
+  "private": true,
+  "description": "Portfolio site for Burak Koç. Static assets only — no build step.",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail"
+  },
+  "devDependencies": {
+    "wrangler": "^4"
+  }
+}

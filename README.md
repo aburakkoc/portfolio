@@ -100,32 +100,47 @@ already configured, so all that is left is:
 git push -u origin main
 ```
 
-### 2. Connect Cloudflare Workers
+### 2. Deploy
 
-1. Cloudflare dashboard → **Workers & Pages** → **Create** → **Connect GitHub**.
-2. Authorise GitHub and pick the `portfolio` repository.
-3. `wrangler.jsonc` already declares everything, so there is no build command
-   and no output directory to set. If a build command field is pre-filled,
-   **clear it** — this site has no build step.
-4. **Deploy.**
+The site deploys from this machine with Cloudflare's CLI. It is already set up
+and `aburakkoc.com` is already attached, so publishing is one command:
 
-You get a `portfolio.<subdomain>.workers.dev` URL in under a minute.
+```bash
+npm run deploy
+```
+
+That uploads only the files that changed and takes a few seconds. There is no
+build step — `wrangler.jsonc` points straight at `public/`.
 
 > This site is **static assets only** — `wrangler.jsonc` has no `main` entry,
 > so no server-side code runs. It is a Worker in name, serving files from the
-> edge. That is why the aburakkoc.com domain page will now show a Worker
-> connected; before this, "No Workers connected" was the expected state.
+> edge. That is why the aburakkoc.com domain page now shows a Worker connected;
+> before deploying, "No Workers connected" was the expected state.
 
-### 3. Attach aburakkoc.com
+If your login ever expires:
 
-In the Worker → **Settings** → **Domains & Routes** → **Add** → **Custom
-domain** → enter `aburakkoc.com`. Because the domain is already on Cloudflare,
-the DNS record is created for you and the certificate is issued automatically —
-usually a couple of minutes. Repeat for `www.aburakkoc.com` if you want that to
-resolve too.
+```bash
+npx wrangler login
+```
+
+### 3. The domain
+
+`aburakkoc.com` is wired up in the `routes` block of `wrangler.jsonc`, so
+Wrangler creates and maintains the DNS record for you. To also serve
+`www.aburakkoc.com`, add a second entry beside it:
+
+```jsonc
+{ "pattern": "www.aburakkoc.com", "custom_domain": true }
+```
 
 All the metadata (`canonical`, `og:url`, `sitemap.xml`, `robots.txt`) already
-points at `https://aburakkoc.com/`, so there is nothing to change afterwards.
+points at `https://aburakkoc.com/`, so there is nothing to change.
+
+### Note on GitHub auto-deploy
+
+The repo is on GitHub for version history, but pushes do **not** auto-deploy —
+deploys happen when you run `npm run deploy`. Connecting Cloudflare's GitHub
+app would add auto-deploy on push if you want it later.
 
 ### 4. Replace the share card
 
@@ -135,15 +150,19 @@ your strongest piece at **1200×630**, keeping the same filename.
 
 ### Publishing updates
 
-Every push to `main` redeploys automatically. Adding a project is:
+Edit `public/assets/js/data.js`, then:
+
+```bash
+npm run deploy
+```
+
+Live in a few seconds. To also save the change to GitHub:
 
 ```bash
 git add -A
 git commit -m "Add project: Nocturne"
 git push
 ```
-
-Live in about 30 seconds.
 
 ---
 
