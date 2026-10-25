@@ -257,7 +257,9 @@
         .split(/\s+/)
         .map((word) => {
           const letters = Array.from(word)
-            .map((ch) => `<span class="ch" style="--d:${i++}">${esc(ch)}</span>`)
+            .map((ch) =>
+              `<span class="ch" style="--d:${i++}" data-final="${esc(ch)}">${esc(ch)}</span>`
+            )
             .join("");
           return `<span class="word">${letters}</span>`;
         })
@@ -265,6 +267,8 @@
       // Screen readers get the plain name rather than one letter at a time.
       title.setAttribute("aria-label", SITE.name);
       $$(".ch", title).forEach((el) => el.setAttribute("aria-hidden", "true"));
+
+      glitchReveal(title);
     }
 
     // Terminal-style status strip above the name. Everything here is derived,
@@ -338,6 +342,63 @@
         // No reel configured — drop anything that depends on one.
         $$("[data-needs-reel]").forEach((el) => el.remove());
       }
+    }
+  }
+
+  /**
+   * Glitch reveal for the name.
+   *
+   * Each letter cycles through junk glyphs before locking to its real
+   * character, left to right. Every letter is pinned to its final width first
+   * (measured once the webfont has loaded), so the scramble cannot reflow the
+   * line — without that the whole name twitches sideways and reads as broken
+   * rather than deliberate. The CSS adds the slice/skew per letter and a tear
+   * bar sweeping down over the top.
+   */
+  function glitchReveal(title) {
+    const letters = $$(".ch", title);
+    if (!letters.length) return;
+
+    if (reduceMotion) {
+      title.classList.add("is-revealed");
+      return;
+    }
+
+    const GLYPHS = "▚▞▜▛█▓▒░/\\|<>#%&@*+=-_01XZ";
+    const pick = () => GLYPHS[(Math.random() * GLYPHS.length) | 0];
+
+    const start = () => {
+      // Pin widths so swapping glyphs cannot shift the layout.
+      letters.forEach((el) => {
+        el.style.width = el.getBoundingClientRect().width + "px";
+      });
+
+      title.classList.add("is-revealed");
+
+      letters.forEach((el, i) => {
+        const final = el.dataset.final;
+        const spins = 5 + (i % 4);
+        let n = 0;
+
+        window.setTimeout(() => {
+          const id = window.setInterval(() => {
+            if (++n >= spins) {
+              el.textContent = final;
+              el.classList.add("is-set");
+              window.clearInterval(id);
+              return;
+            }
+            el.textContent = pick();
+          }, 42);
+        }, 90 + i * 55);
+      });
+    };
+
+    // Measuring before the webfont lands would pin the fallback's widths.
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(start).catch(start);
+    } else {
+      start();
     }
   }
 
@@ -466,6 +527,13 @@
     requestAnimationFrame(() => {
       requestAnimationFrame(() => cards.forEach((c) => c.classList.add("is-in")));
     });
+
+    // Hand over to the hover transition once the entrance stagger is done.
+    const settleIn = Math.min(650 + cards.length * 45, 2400);
+    window.setTimeout(() => cards.forEach((c) => c.classList.add("is-settled")), settleIn);
+
+    // Lets the magnetic hover drop its cached geometry for the old cards.
+    grid.dispatchEvent(new CustomEvent("grid:rendered"));
   }
 
   /**
@@ -576,6 +644,111 @@
       const img = $(".card__img", card);
       if (img && img.dataset.poster) img.src = img.dataset.poster;
     }, true);
+  }
+
+  /**
+   * Dock-style magnetic hover.
+   *
+   * The hovered card eases up in scale; cards within a radius drift away from
+   * it, falling off with distance so the motion dies out rather than stopping
+   * abruptly. Deliberately small numbers — a big push here reads as the page
+   * lurching, which is exactly the queasy effect to avoid.
+   *
+   * Only transforms are touched, so nothing reflows. Pointer-hover devices
+   * only: on touch, every tap would fire a hover and shove the grid around.
+   */
+  const MAG = {
+    scale:  1.05,   // hovered card
+    push:   14,     // px, maximum displacement of a neighbour
+    radius: 1.45,   // multiples of card width
+    dim:    0.72,   // opacity of distant cards — enough to focus, not to dazzle
+  };
+
+  function wireMagneticGrid() {
+    if (reduceMotion || !window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
+
+    const grid = $("[data-grid]");
+    if (!grid) return;
+
+    let cards = [];
+    let centres = [];
+    let measuredAt = null;   // scrollY when the rects were taken
+
+    // Rects are viewport-relative, so they go stale on scroll. Re-measuring on
+    // every pointerover would force a layout read per card move; this only
+    // re-reads when the page has actually moved under the cursor.
+    function measure(force) {
+      if (!force && measuredAt === window.scrollY && cards.length) return;
+      cards = $$(".card", grid);
+      centres = cards.map((c) => {
+        const r = c.getBoundingClientRect();
+        return { x: r.left + r.width / 2, y: r.top + r.height / 2, w: r.width };
+      });
+      measuredAt = window.scrollY;
+    }
+
+    function clear() {
+      cards.forEach((c) => {
+        c.style.transform = "";
+        c.style.opacity = "";
+        c.classList.remove("is-hot");
+      });
+    }
+
+    function apply(hovered) {
+      if (!centres.length) return;
+      const me = centres[hovered];
+      const radius = me.w * MAG.radius;
+
+      cards.forEach((card, i) => {
+        if (i === hovered) {
+          card.style.transform = `scale(${MAG.scale})`;
+          card.style.opacity = "1";
+          card.classList.add("is-hot");
+          return;
+        }
+
+        card.classList.remove("is-hot");
+
+        const dx = centres[i].x - me.x;
+        const dy = centres[i].y - me.y;
+        const dist = Math.hypot(dx, dy) || 1;
+
+        if (dist > radius) {
+          card.style.transform = "";
+          card.style.opacity = String(MAG.dim);
+          return;
+        }
+
+        // Cosine falloff: strongest right next to the cursor, nothing at the
+        // rim. Linear falloff leaves a visible edge where motion stops.
+        const t = 1 - dist / radius;
+        const strength = (1 - Math.cos(t * Math.PI)) / 2;
+        const px = (dx / dist) * MAG.push * strength;
+        const py = (dy / dist) * MAG.push * strength;
+
+        card.style.transform = `translate(${px.toFixed(2)}px, ${py.toFixed(2)}px)`;
+        card.style.opacity = String(MAG.dim + (1 - MAG.dim) * strength * 0.8);
+      });
+    }
+
+    grid.addEventListener("pointerover", (e) => {
+      const card = e.target.closest(".card");
+      // Moving into a gap between cards should relax the grid, not freeze it
+      // in the last card's state.
+      if (!card) { clear(); return; }
+
+      measure();
+      const i = cards.indexOf(card);
+      if (i >= 0) apply(i);
+    });
+
+    grid.addEventListener("pointerleave", clear);
+
+    window.addEventListener("resize", () => { clear(); measure(true); }, { passive: true });
+
+    // A re-filter swaps the whole card set out from under the cached rects.
+    grid.addEventListener("grid:rendered", () => { cards = []; measuredAt = null; });
   }
 
   /* ------------------------------------------------------------------
@@ -836,6 +1009,7 @@
   buildFilters();
   renderGrid();
   wireHoverPreview();
+  wireMagneticGrid();
   wireLightbox();
   wireScroll();
   wireReveals();
