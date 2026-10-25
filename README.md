@@ -4,14 +4,22 @@ A zero-build static site. No Node, no framework, no compile step — the browser
 reads exactly what is in this folder. That keeps it fast, keeps it cheap, and
 means it will still work unchanged in five years.
 
+Everything served to the public lives in `public/`. Anything outside it (this
+README, the Cloudflare config) is never uploaded.
+
 ```
-index.html              page structure
-assets/css/style.css    all styling (design tokens at the top)
-assets/js/data.js       >>> YOUR CONTENT — the only file you normally edit
-assets/js/main.js       rendering, filtering, lightbox
-assets/img/favicon.svg  tab icon
-_headers                caching + security headers (read by Cloudflare Pages)
-robots.txt              search engine rules
+public/
+  index.html              page structure
+  404.html                not-found page
+  assets/css/style.css    all styling (design tokens at the top)
+  assets/js/data.js       >>> YOUR CONTENT — the only file you normally edit
+  assets/js/main.js       rendering, filtering, lightbox
+  assets/img/favicon.svg  tab icon
+  assets/img/og.jpg       social share card (1200x630)
+  _headers                caching + security headers
+  robots.txt              search engine rules
+  sitemap.xml             search engine index
+wrangler.jsonc            Cloudflare deployment config
 ```
 
 ---
@@ -66,13 +74,13 @@ an empty string and the hero stays purely typographic.
 From this folder:
 
 ```bash
-python -m http.server 4321
+python -m http.server 4321 --directory public
 ```
 
 Then open <http://localhost:4321>.
 
-Opening `index.html` by double-clicking also mostly works, but a local server
-matches production more closely.
+Opening `public/index.html` by double-clicking also mostly works, but a local
+server matches production more closely.
 
 > **If a change does not show up**, your browser cached the old file. Bump the
 > `?v=` number on the `style.css` / `data.js` / `main.js` lines at the top and
@@ -92,25 +100,29 @@ already configured, so all that is left is:
 git push -u origin main
 ```
 
-### 2. Connect Cloudflare Pages
+### 2. Connect Cloudflare Workers
 
-1. Cloudflare dashboard → **Workers & Pages** → **Create** → **Pages** →
-   **Connect to Git**.
-2. Authorise GitHub and pick the repository.
-3. Build settings — this is the important part, because there is no build:
-   - **Framework preset:** `None`
-   - **Build command:** *leave completely empty*
-   - **Build output directory:** `/`
-4. **Save and Deploy.**
+1. Cloudflare dashboard → **Workers & Pages** → **Create** → **Connect GitHub**.
+2. Authorise GitHub and pick the `portfolio` repository.
+3. `wrangler.jsonc` already declares everything, so there is no build command
+   and no output directory to set. If a build command field is pre-filled,
+   **clear it** — this site has no build step.
+4. **Deploy.**
 
-You get a `your-project.pages.dev` URL in under a minute.
+You get a `portfolio.<subdomain>.workers.dev` URL in under a minute.
+
+> This site is **static assets only** — `wrangler.jsonc` has no `main` entry,
+> so no server-side code runs. It is a Worker in name, serving files from the
+> edge. That is why the aburakkoc.com domain page will now show a Worker
+> connected; before this, "No Workers connected" was the expected state.
 
 ### 3. Attach aburakkoc.com
 
-In the Pages project → **Custom domains** → **Set up a custom domain** → enter
-`aburakkoc.com`. Because the domain is already on Cloudflare, the DNS record is
-created for you and the certificate is issued automatically — usually a couple
-of minutes. Repeat for `www.aburakkoc.com` if you want that to resolve too.
+In the Worker → **Settings** → **Domains & Routes** → **Add** → **Custom
+domain** → enter `aburakkoc.com`. Because the domain is already on Cloudflare,
+the DNS record is created for you and the certificate is issued automatically —
+usually a couple of minutes. Repeat for `www.aburakkoc.com` if you want that to
+resolve too.
 
 All the metadata (`canonical`, `og:url`, `sitemap.xml`, `robots.txt`) already
 points at `https://aburakkoc.com/`, so there is nothing to change afterwards.
