@@ -26,30 +26,53 @@
   }
 
   /**
-   * Accepts a full YouTube URL, a youtu.be link, a /shorts/ link, or a bare
-   * 11-character ID. Returns the ID, or "" when it cannot find a real one.
+   * Works out which service a video link points at.
+   *
+   * Accepts YouTube (watch, youtu.be, /embed/, /shorts/, /live/, or a bare
+   * 11-character ID) and Vimeo (vimeo.com/123456789, player.vimeo.com, or a
+   * bare numeric ID). Returns { provider, id }, with provider "" when the
+   * input is not a real video link.
    */
-  function youtubeId(input) {
-    if (!input) return "";
+  function parseVideo(input) {
+    if (!input) return { provider: "", id: "" };
     const raw = String(input).trim();
 
-    // Leave the demo placeholders out — they are 11 chars and would pass below.
-    if (/^REPLACE_ME/i.test(raw)) return "";
+    // Demo placeholders are 11 chars and would otherwise pass as YouTube IDs.
+    if (/^REPLACE_ME/i.test(raw)) return { provider: "", id: "" };
 
-    const patterns = [
+    const vimeo = [
+      /vimeo\.com\/(?:video\/)?(\d{6,12})/,
+      /player\.vimeo\.com\/video\/(\d{6,12})/,
+    ];
+    for (const re of vimeo) {
+      const m = raw.match(re);
+      if (m) return { provider: "vimeo", id: m[1] };
+    }
+    // A bare number can only be Vimeo — YouTube IDs are never all digits.
+    if (/^\d{6,12}$/.test(raw)) return { provider: "vimeo", id: raw };
+
+    const youtube = [
       /[?&]v=([\w-]{11})/,          // watch?v=ID
       /youtu\.be\/([\w-]{11})/,     // youtu.be/ID
       /\/embed\/([\w-]{11})/,       // /embed/ID
       /\/shorts\/([\w-]{11})/,      // /shorts/ID
       /\/live\/([\w-]{11})/,        // /live/ID
     ];
-    for (const re of patterns) {
+    for (const re of youtube) {
       const m = raw.match(re);
-      if (m) return m[1];
+      if (m) return { provider: "youtube", id: m[1] };
     }
 
-    // Bare ID
-    return /^[\w-]{11}$/.test(raw) ? raw : "";
+    return /^[\w-]{11}$/.test(raw)
+      ? { provider: "youtube", id: raw }
+      : { provider: "", id: "" };
+  }
+
+  /** The embed URL to drop into the lightbox iframe. */
+  function embedUrl(provider, id) {
+    return provider === "vimeo"
+      ? `https://player.vimeo.com/video/${id}?autoplay=1&dnt=1&title=0&byline=0&portrait=0`
+      : `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0&modestbranding=1&playsinline=1`;
   }
 
   /** URL-safe slug, used for shareable #work/<slug> links. */
@@ -71,12 +94,14 @@
      ------------------------------------------------------------------ */
 
   const items = PROJECTS.map((p, index) => {
-    const vid = youtubeId(p.youtube);
+    // `video` is the current field name; `youtube` still works for old entries.
+    const { provider, id } = parseVideo(p.video || p.youtube);
     return {
       ...p,
       index,
-      vid,
-      hasVideo: Boolean(vid),
+      provider,
+      vid: id,
+      hasVideo: Boolean(provider),
       slug: slugify(p.title) || "project-" + index,
       // Subtitle line on the card: "Music Video — Client" or whatever exists.
       sub: [p.type, p.client].filter(Boolean).join(" — "),
@@ -143,11 +168,13 @@
 
     // Hero reel — only built when SITE.reel holds a real video.
     const reelHost = $("[data-hero-reel]");
-    const reelId = youtubeId(SITE.reel);
+    const reel = parseVideo(SITE.reel);
     if (reelHost) {
-      if (reelId) {
+      if (reel.provider) {
+        // Hero reel does not autoplay — strip that param from the shared URL.
+        const src = embedUrl(reel.provider, reel.id).replace("autoplay=1&", "");
         reelHost.innerHTML =
-          `<iframe src="https://www.youtube-nocookie.com/embed/${esc(reelId)}?rel=0&modestbranding=1&playsinline=1"` +
+          `<iframe src="${esc(src)}"` +
           ` title="${esc(SITE.name)} — Showreel" loading="lazy" allowfullscreen` +
           ` allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"></iframe>`;
       } else {
@@ -220,10 +247,15 @@
      ------------------------------------------------------------------ */
 
   function cardMarkup(p, i) {
-    const thumb = p.hasVideo
+    // YouTube thumbnails have predictable URLs. Vimeo needs an API lookup, so
+    // the image starts empty and fillVimeoThumbs() sets it once resolved.
+    const thumb = p.provider === "youtube"
       ? `<img class="card__img" src="https://i.ytimg.com/vi/${esc(p.vid)}/maxresdefault.jpg"` +
         ` alt="" loading="lazy" decoding="async" data-vid="${esc(p.vid)}" data-fallback="0">`
-      : "";
+      : p.provider === "vimeo"
+        ? `<img class="card__img" alt="" loading="lazy" decoding="async"` +
+          ` data-vimeo="${esc(p.vid)}" hidden>`
+        : "";
 
     const badge = p.type ? `<span class="card__type">${esc(p.type)}</span>` : "";
     const sub   = p.sub ? `<p class="card__sub">${esc(p.sub)}</p>` : "";
@@ -270,10 +302,50 @@
 
     grid.innerHTML = visible.map(cardMarkup).join("");
 
+    fillVimeoThumbs(grid);
+
     // Let the browser paint the start state, then trigger the staggered entrance.
     const cards = $$(".card", grid);
     requestAnimationFrame(() => {
       requestAnimationFrame(() => cards.forEach((c) => c.classList.add("is-in")));
+    });
+  }
+
+  /**
+   * Vimeo has no guessable thumbnail URL, so ask its public oEmbed endpoint.
+   * Results are cached for the session — re-filtering rebuilds the grid, and
+   * we do not want to hit the API again for the same clip.
+   *
+   * If a lookup fails the image simply stays hidden and the card falls back to
+   * its gradient, exactly like a missing YouTube thumbnail.
+   */
+  const vimeoCache = new Map();
+
+  function fillVimeoThumbs(root) {
+    $$("img[data-vimeo]", root).forEach(async (img) => {
+      const id = img.dataset.vimeo;
+
+      if (vimeoCache.has(id)) {
+        const url = vimeoCache.get(id);
+        if (url) { img.src = url; img.hidden = false; }
+        return;
+      }
+
+      try {
+        const endpoint =
+          "https://vimeo.com/api/oembed.json?width=1280&url=" +
+          encodeURIComponent("https://vimeo.com/" + id);
+        const res = await fetch(endpoint);
+        if (!res.ok) throw new Error(res.status);
+
+        const data = await res.json();
+        const url = data.thumbnail_url || "";
+        vimeoCache.set(id, url);
+
+        if (url && img.isConnected) { img.src = url; img.hidden = false; }
+      } catch {
+        vimeoCache.set(id, "");   // remember the failure, do not retry
+      }
     });
   }
 
@@ -378,11 +450,11 @@
     current = i;
 
     lb.stage.innerHTML = p.hasVideo
-      ? `<iframe src="https://www.youtube-nocookie.com/embed/${esc(p.vid)}?autoplay=1&rel=0&modestbranding=1&playsinline=1"` +
+      ? `<iframe src="${esc(embedUrl(p.provider, p.vid))}"` +
         ` title="${esc(p.title)}" allowfullscreen` +
         ` allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"></iframe>`
       : `<div class="lb__missing"><span class="eyebrow">No video linked</span>` +
-        `<p>Add a YouTube URL to this project in <code>assets/js/data.js</code>.</p></div>`;
+        `<p>Add a YouTube or Vimeo URL to this project in <code>assets/js/data.js</code>.</p></div>`;
 
     const chips = Array.isArray(p.tags) && p.tags.length
       ? `<div class="chips">${p.tags.map((t) => `<span class="chip">${esc(t)}</span>`).join("")}</div>`
