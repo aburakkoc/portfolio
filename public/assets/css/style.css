@@ -21,9 +21,14 @@
   --accent:     #ff5c35;
   --accent-dim: rgba(255, 92, 53, .14);
 
-  /* Type */
+  /* Type
+     --font-display is the futuristic face, used only for the name, section
+     titles and the brand mark. Swap that one line to re-face the whole site;
+     "Bruno Ace", "Tektur" and "Orbitron" are drop-in alternatives (remember to
+     change the Google Fonts <link> in index.html too). */
+  --font-display: "Syncopate", "Inter Tight", system-ui, sans-serif;
   --font:  "Inter Tight", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
-  --mono:  "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --mono:  "Share Tech Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
   /* Fluid type scale — everything breathes with the viewport */
   --t-xs:   clamp(.66rem, .62rem + .18vw, .75rem);
@@ -32,7 +37,9 @@
   --t-lg:   clamp(1.1rem, 1rem   + .5vw,  1.4rem);
   --t-xl:   clamp(1.6rem, 1.2rem + 2vw,   2.6rem);
   --t-2xl:  clamp(2.2rem, 1.4rem + 4vw,   4.2rem);
-  --t-mega: clamp(2.9rem, 1rem   + 11vw,  10.5rem);
+  /* Sized for Syncopate, which is far wider than a normal face — a smaller
+     cap here keeps "A.BURAK KOÇ" on one line without overflowing. */
+  --t-mega: clamp(1.5rem, .2rem + 6.2vw, 7rem);
 
   /* Rhythm */
   --gutter:  clamp(1.15rem, .6rem + 3vw, 4.5rem);
@@ -215,9 +222,10 @@ ul, ol { list-style: none; }
 }
 
 .brand {
-  font-size: var(--t-sm);
-  font-weight: 600;
-  letter-spacing: .14em;
+  font-family: var(--font-display);
+  font-size: clamp(.66rem, .58rem + .3vw, .8rem);
+  font-weight: 700;
+  letter-spacing: .06em;
   text-transform: uppercase;
   white-space: nowrap;
   transition: opacity var(--fast) var(--ease);
@@ -281,7 +289,8 @@ ul, ol { list-style: none; }
   overflow: hidden;
 }
 
-/* Slow drifting glow, so the empty space is never dead */
+/* Slow drifting glow, so the empty space is never dead.
+   Suppressed when the reel is playing behind — the video is the backdrop. */
 .hero::before {
   content: "";
   position: absolute;
@@ -292,24 +301,167 @@ ul, ol { list-style: none; }
   pointer-events: none;
   animation: drift 22s var(--ease-io) infinite alternate;
 }
+.has-hero-video .hero::before { opacity: .35; }
 
 @keyframes drift {
   from { transform: translate(-56%, -3%) scale(1); }
   to   { transform: translate(-44%, 4%) scale(1.12); }
 }
 
+/* ---- Hero background video ---- */
+/* The still frame from the reel is set as this element's background image, so
+   the hero always shows imagery even if the video never autoplays. */
+.hero__bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  background-color: #000;
+  background-size: cover;
+  background-position: center;
+  filter: saturate(.72) contrast(1.06);
+}
+
+/* The iframe is deliberately larger than the viewport and scaled up, which
+   pushes YouTube's title bar and watermark outside the visible area. */
+.hero__bg-frame {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 100vw;
+  height: 56.25vw;             /* 16:9 against width  */
+  min-height: 100%;
+  min-width: 177.78vh;         /* 16:9 against height */
+  transform: translate(-50%, -50%) scale(1.32);
+  pointer-events: none;
+  /* Held hidden until the player reports it is genuinely playing, so a
+     blocked autoplay never exposes YouTube's play button. */
+  opacity: 0;
+  transition: opacity 1.4s var(--ease);
+}
+.hero__bg.is-playing .hero__bg-frame { opacity: 1; }
+
+.hero__bg iframe,
+.hero__bg-frame > div {
+  width: 100%; height: 100%;
+  border: 0;
+  display: block;
+  pointer-events: none;
+}
+
+/* Knocks the footage back so type stays readable on top.
+   One gradient only — the global .vignette and .grain layers stack on top of
+   this, so anything heavier here turns the video completely black. Light at
+   the top where the footage shows, dense at the bottom behind the type. */
+.hero__veil {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(
+    to bottom,
+    rgba(9, 9, 10, .58) 0%,
+    rgba(9, 9, 10, .62) 30%,
+    rgba(9, 9, 10, .82) 60%,
+    rgba(9, 9, 10, .96) 85%,
+    var(--bg) 100%
+  );
+}
+
+/* ---- CRT scanlines ---- */
+.hero__scan {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  opacity: .55;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0) 0 2px,
+    rgba(0, 0, 0, .34) 2px 3px
+  );
+}
+
+/* A soft band drifting down the screen, like a refresh roll. */
+.hero__scan::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0;
+  height: 16%;
+  background: linear-gradient(to bottom, transparent, rgba(185, 225, 255, .055), transparent);
+  animation: crt-roll 7.5s linear infinite;
+}
+
+@keyframes crt-roll {
+  from { transform: translateY(-130%); }
+  to   { transform: translateY(730%); }
+}
+
+/* ---- Viewfinder corner marks ---- */
+.hero__hud {
+  position: absolute;
+  inset: clamp(12px, 2.2vw, 30px);
+  z-index: 3;
+  pointer-events: none;
+}
+.hero__hud span {
+  position: absolute;
+  width: 15px; height: 15px;
+  border: 1px solid rgba(255, 255, 255, .22);
+}
+.hero__hud span:nth-child(1) { top: 0;    left: 0;    border-right: 0; border-bottom: 0; }
+.hero__hud span:nth-child(2) { top: 0;    right: 0;   border-left: 0;  border-bottom: 0; }
+.hero__hud span:nth-child(3) { bottom: 0; left: 0;    border-right: 0; border-top: 0; }
+.hero__hud span:nth-child(4) { bottom: 0; right: 0;   border-left: 0;  border-top: 0; }
+
 .hero__inner {
   position: relative;
+  z-index: 4;
   display: grid;
-  gap: clamp(2rem, 5vh, 4rem);
+  gap: clamp(1.4rem, 3.5vh, 2.6rem);
+}
+
+/* ---- Terminal readout strip ---- */
+.readout {
+  font-family: var(--mono);
+  font-size: var(--t-xs);
+  letter-spacing: .13em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  white-space: nowrap;
+  overflow: hidden;
+}
+.readout__i i { font-style: normal; opacity: .5; }
+
+/* Drop the year-span segment before the strip gets wide enough to clip. */
+@media (max-width: 620px) {
+  .readout__i:last-of-type { display: none; }
 }
 
 .hero__title {
+  font-family: var(--font-display);
   font-size: var(--t-mega);
-  font-weight: 200;
-  line-height: .86;
-  letter-spacing: -.045em;
+  font-weight: 400;
+  line-height: 1.02;
+  letter-spacing: -.01em;
   text-transform: uppercase;
+  /* Faint RGB split, as if the phosphors are slightly misaligned. */
+  text-shadow:
+    -.018em 0 rgba(255, 72, 60, .30),
+     .018em 0 rgba(70, 215, 255, .24);
+  animation: crt-flicker 6.5s steps(1) infinite;
+}
+
+/* Keeps each word intact so the name wraps between words, never mid-word. */
+.hero__title .word {
+  display: inline-block;
+  white-space: nowrap;
+}
+
+@keyframes crt-flicker {
+  0%, 96%, 100% { opacity: 1; }
+  97%           { opacity: .86; }
+  98%           { opacity: 1; }
+  99%           { opacity: .92; }
 }
 
 /* Per-character reveal. Each span gets its --d index from JS. */
@@ -371,29 +523,42 @@ ul, ol { list-style: none; }
   transform: translateY(-2px);
 }
 
-/* Hero reel player */
-.hero__reel {
-  position: relative;
-  aspect-ratio: 16 / 9;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  overflow: hidden;
-  background: var(--bg-2);
-  opacity: 0;
-  transform: translateY(32px) scale(.985);
-  animation: reel-in 1.3s var(--ease) .5s forwards;
+/* Blinking terminal caret after the role line */
+.caret {
+  display: inline-block;
+  width: .5em;
+  height: .95em;
+  margin-left: .45em;
+  vertical-align: -.1em;
+  background: var(--accent);
+  animation: blink 1.15s steps(1) infinite;
 }
 
-@keyframes reel-in {
-  to { opacity: 1; transform: none; }
+@keyframes blink {
+  0%, 49%   { opacity: 1; }
+  50%, 100% { opacity: 0; }
 }
 
-.hero__reel iframe {
-  position: absolute;
-  inset: 0;
-  width: 100%; height: 100%;
-  border: 0;
+.hero__actions { margin-top: 1.4rem; }
+
+.pill--accent {
+  display: inline-flex;
+  align-items: center;
+  gap: .55rem;
+  border-color: var(--line-str);
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: var(--t-sm);
+  letter-spacing: .1em;
+  text-transform: uppercase;
 }
+.pill--accent svg { width: .85em; fill: var(--accent); transition: fill var(--fast) var(--ease); }
+.pill--accent:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.pill--accent:hover svg { fill: #fff; }
 
 /* Scroll hint */
 .scroll-hint {
@@ -436,10 +601,12 @@ ul, ol { list-style: none; }
 }
 
 .section__title {
-  font-size: var(--t-2xl);
-  font-weight: 200;
-  line-height: 1;
-  letter-spacing: -.035em;
+  font-family: var(--font-display);
+  font-size: clamp(1.3rem, .7rem + 2vw, 2.4rem);
+  font-weight: 400;
+  line-height: 1.05;
+  letter-spacing: -.01em;
+  text-transform: uppercase;
 }
 
 .section__count {
@@ -940,7 +1107,13 @@ ul, ol { list-style: none; }
   }
 
   /* Anything that animates in should simply be visible */
-  .reveal, .card, .hero__reel, .lb__panel { opacity: 1; transform: none; }
+  .reveal, .card, .lb__panel { opacity: 1; transform: none; }
   .hero__title .ch { opacity: 1; transform: none; }
   .grain { display: none; }
+
+  /* CRT motion is decorative — drop the moving parts, keep the static
+     texture. JS also skips building the background video entirely. */
+  .hero__scan::after { display: none; }
+  .caret { opacity: 1; }
+  .hero__title { animation: none; }
 }

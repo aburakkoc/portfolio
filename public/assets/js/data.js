@@ -11,18 +11,26 @@
    1. SITE IDENTITY
    --------------------------------------------------------------------------- */
 const SITE = {
-  name:      "BURAK KOÇ",
+  name:      "A.BURAK KOÇ",
   role:      "Filmmaker & Motion Designer",
 
-  statement: "I direct and animate — moving between live action, real-time engines and post. Commercial work for Qatar Airways, Puma, Red Bull and Jaeger-LeCoultre, alongside a growing body of Unreal Engine and AI-assisted experiments.",
+  statement: "I direct and animate — moving between live action, real-time engines and post. Ankara, then Doha, now Berlin. Commercial work for Qatar Airways, Puma, Red Bull and Jaeger-LeCoultre, alongside a growing body of Unreal Engine and AI-assisted experiments.",
 
   email:     "aburakoc@gmail.com",
 
-  // TODO: set your city. Left general because I did not want to guess.
-  location:  "Available worldwide",
+  location:  "Berlin, DE",
 
-  // MoGraph Reel 2023, recovered from the old site.
+  // MoGraph Reel 2023, recovered from the old site. Plays muted and looping
+  // behind the hero.
   reel:      "FE10wzabIeU",
+
+  // The still shown behind the hero before the video starts — and instead of
+  // it whenever autoplay is blocked (iOS Low Power Mode, data saver, some
+  // mobile browsers). Left empty it falls back to YouTube's own thumbnail,
+  // which for your reel is the "MOGRAPH REEL 23" title card and competes with
+  // your name. Export a dark, wide frame from the reel, drop it at
+  // public/assets/img/hero.jpg and set this to "/assets/img/hero.jpg".
+  reelPoster: "",
 
   links: [
     { label: "Instagram", url: "https://instagram.com/aburakkoc" },

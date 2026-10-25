@@ -4,22 +4,22 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<title>Burak Koç — Filmmaker &amp; Motion Designer</title>
+<title>A.Burak Koç — Filmmaker &amp; Motion Designer</title>
 <meta name="description" content="Filmmaker and motion designer working across live action, Unreal Engine, motion design and 2D character animation.">
 <meta name="theme-color" content="#09090a">
 <meta name="color-scheme" content="dark">
 
 <!-- Social sharing. Swap assets/img/og.jpg for a frame from your own reel. -->
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="Burak Koç">
+<meta property="og:site_name" content="A.Burak Koç">
 <meta property="og:url" content="https://aburakkoc.com/">
-<meta property="og:title" content="Burak Koç — Filmmaker &amp; Motion Designer">
+<meta property="og:title" content="A.Burak Koç — Filmmaker &amp; Motion Designer">
 <meta property="og:description" content="Filmmaker and motion designer working across live action, Unreal Engine, motion design and 2D character animation.">
 <meta property="og:image" content="https://aburakkoc.com/assets/img/og.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Burak Koç — Filmmaker &amp; Motion Designer">
+<meta name="twitter:title" content="A.Burak Koç — Filmmaker &amp; Motion Designer">
 <meta name="twitter:description" content="Filmmaker and motion designer working across live action, Unreal Engine, motion design and 2D character animation.">
 <meta name="twitter:image" content="https://aburakkoc.com/assets/img/og.jpg">
 
@@ -30,10 +30,10 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://i.ytimg.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@200;300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&family=Share+Tech+Mono&family=Inter+Tight:wght@200;300;400;500;600&display=swap" rel="stylesheet">
 
 <!-- Bump ?v= when you change CSS or JS, to push past browser caches. -->
-<link rel="stylesheet" href="assets/css/style.css?v=4">
+<link rel="stylesheet" href="assets/css/style.css?v=11">
 </head>
 
 <body>
@@ -60,20 +60,40 @@
 <main id="top">
 
   <!-- ======================= HERO ======================= -->
+  <!--
+    The showreel plays here as a muted, looping background layer. JS builds the
+    iframe from SITE.reel; the veil knocks its brightness down so the type on
+    top stays readable, and the scan layer adds the CRT texture.
+  -->
   <section class="hero">
+    <div class="hero__bg" data-hero-bg aria-hidden="true"></div>
+    <div class="hero__veil" aria-hidden="true"></div>
+    <div class="hero__scan" aria-hidden="true"></div>
+
+    <!-- Viewfinder corner marks -->
+    <div class="hero__hud" aria-hidden="true">
+      <span></span><span></span><span></span><span></span>
+    </div>
+
     <div class="wrap hero__inner">
 
-      <div>
-        <h1 class="hero__title" data-hero-title>Portfolio</h1>
-      </div>
+      <p class="readout" data-readout aria-hidden="true"></p>
 
-      <!-- Only rendered when SITE.reel is set in data.js -->
-      <div class="hero__reel" data-hero-reel></div>
+      <h1 class="hero__title" data-hero-title>Portfolio</h1>
 
       <div class="hero__meta">
         <div>
-          <span class="eyebrow hero__role" data-site-role>Filmmaker &amp; Motion Designer</span>
+          <span class="eyebrow hero__role">
+            <span data-site-role>Filmmaker &amp; Motion Designer</span><i class="caret" aria-hidden="true"></i>
+          </span>
           <p class="hero__statement" data-site-statement></p>
+
+          <div class="hero__actions" data-needs-reel>
+            <button class="pill pill--accent" type="button" data-open-reel>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+              Watch showreel
+            </button>
+          </div>
         </div>
 
         <div class="hero__links" data-site-links></div>
@@ -97,9 +117,9 @@
       </div>
 
       <!-- Filter buttons are generated from CATEGORIES in data.js -->
-      <div class="filters" data-filters role="group" aria-label="Filter work by craft"></div>
+      <div class="filters" data-filters role="group" aria-label="Filter work by discipline"></div>
 
-      <p class="filters-blurb" data-filters-blurb>Everything, newest first. Filter by craft above.</p>
+      <p class="filters-blurb" data-filters-blurb>Everything, newest first. Filter by discipline above.</p>
 
       <!-- Project cards are generated from PROJECTS in data.js -->
       <div class="grid" data-grid></div>
@@ -190,8 +210,8 @@
   </div>
 </div>
 
-<script src="assets/js/data.js?v=4"></script>
-<script src="assets/js/main.js?v=4"></script>
+<script src="assets/js/data.js?v=11"></script>
+<script src="assets/js/main.js?v=11"></script>
 
 </body>
 </html>

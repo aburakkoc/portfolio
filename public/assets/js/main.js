@@ -75,6 +75,118 @@
       : `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0&modestbranding=1&playsinline=1`;
   }
 
+  /**
+   * Embed URL for the silent looping hero background.
+   *
+   * Autoplay is only permitted while muted, so mute is not optional here.
+   * YouTube needs `playlist=<same id>` for `loop` to work on a single video,
+   * and every chrome-related flag is switched off; whatever chrome survives is
+   * cropped by the oversized frame in CSS. Vimeo has a dedicated background
+   * mode that strips all of it in one flag.
+   */
+  function bgEmbedUrl(provider, id) {
+    return provider === "vimeo"
+      ? `https://player.vimeo.com/video/${id}?background=1&autoplay=1&loop=1&muted=1&dnt=1`
+      : `https://www.youtube-nocookie.com/embed/${id}` +
+        `?autoplay=1&mute=1&loop=1&playlist=${id}&controls=0&disablekb=1` +
+        `&modestbranding=1&rel=0&playsinline=1&iv_load_policy=3&fs=0&cc_load_policy=0` +
+        `&enablejsapi=1`;
+  }
+
+  /**
+   * Browsers block autoplay in more cases than the docs suggest — low power
+   * mode, data saver, low media engagement. Two defences:
+   *
+   *  1. A still from the reel is painted behind the iframe, so the hero is
+   *     never a black rectangle even when the video never starts.
+   *  2. Once the iframe loads we ask the player to play via postMessage,
+   *     which succeeds in some cases where the autoplay parameter alone does
+   *     not. Harmless when it is already playing.
+   */
+  function setHeroPoster(host, provider, id) {
+    // An explicit still always wins — YouTube's auto-thumbnail is usually the
+    // title card, which fights with the name sitting on top of it.
+    if (SITE.reelPoster) {
+      host.style.backgroundImage = `url("${SITE.reelPoster}")`;
+      return;
+    }
+    if (provider === "youtube") {
+      host.style.backgroundImage =
+        `url("https://i.ytimg.com/vi/${id}/maxresdefault.jpg")`;
+      return;
+    }
+    if (provider === "vimeo") {
+      fetch("https://vimeo.com/api/oembed.json?width=1280&url=" +
+            encodeURIComponent("https://vimeo.com/" + id))
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => {
+          if (d && d.thumbnail_url) {
+            host.style.backgroundImage = `url("${d.thumbnail_url}")`;
+          }
+        })
+        .catch(() => {});
+    }
+  }
+
+  /**
+   * Starts the hero video and only reveals it once it is genuinely playing.
+   *
+   * Autoplay via URL parameter is unreliable, and a blocked YouTube embed
+   * shows its big red play button, which looks broken. So the iframe is held
+   * at opacity 0 and only faded in on a real PLAYING state. If autoplay is
+   * refused — or the API is blocked outright — nothing fades in and the
+   * poster still frame remains, which is a perfectly good hero.
+   */
+  function startHeroVideo(host, provider, id) {
+    if (provider === "vimeo") {
+      // background=1 already strips all chrome, so reveal once it loads.
+      const frame = $("iframe", host);
+      if (frame) frame.addEventListener("load", () => host.classList.add("is-playing"));
+      return;
+    }
+    if (provider !== "youtube") return;
+
+    const mount = $("[data-yt-mount]", host);
+    if (!mount) return;
+
+    const build = () => {
+      /* global YT */
+      new YT.Player(mount, {
+        videoId: id,
+        host: "https://www.youtube-nocookie.com",
+        playerVars: {
+          autoplay: 1, mute: 1, controls: 0, loop: 1, playlist: id,
+          playsinline: 1, modestbranding: 1, rel: 0,
+          iv_load_policy: 3, fs: 0, disablekb: 1,
+        },
+        events: {
+          onReady: (e) => { e.target.mute(); e.target.playVideo(); },
+          onStateChange: (e) => {
+            if (e.data === YT.PlayerState.PLAYING) host.classList.add("is-playing");
+            // loop+playlist usually handles this, but belt and braces.
+            if (e.data === YT.PlayerState.ENDED) e.target.playVideo();
+          },
+        },
+      });
+    };
+
+    if (window.YT && window.YT.Player) { build(); return; }
+
+    // The API fires one global callback; chain onto anything already set.
+    const prev = window.onYouTubeIframeAPIReady;
+    window.onYouTubeIframeAPIReady = function () {
+      if (typeof prev === "function") prev();
+      build();
+    };
+
+    if (!$('script[src*="iframe_api"]')) {
+      const s = document.createElement("script");
+      s.src = "https://www.youtube.com/iframe_api";
+      s.async = true;
+      document.head.appendChild(s);
+    }
+  }
+
   /** URL-safe slug, used for shareable #work/<slug> links. */
   function slugify(text) {
     return String(text)
@@ -136,18 +248,50 @@
     });
 
     // Split the name into characters so each can animate in on its own delay.
+    // Characters are grouped per word, so a long name can still wrap between
+    // words on narrow screens instead of overflowing.
     const title = $("[data-hero-title]");
     if (title) {
-      const chars = Array.from(SITE.name);
-      title.innerHTML = chars
-        .map((ch, i) =>
-          ch === " "
-            ? '<span class="sp" aria-hidden="true"></span>'
-            : `<span class="ch" style="--d:${i}" aria-hidden="true">${esc(ch)}</span>`
-        )
-        .join("");
-      // Screen readers get the plain name rather than 8 separate letters.
+      let i = 0;
+      title.innerHTML = SITE.name
+        .split(/\s+/)
+        .map((word) => {
+          const letters = Array.from(word)
+            .map((ch) => `<span class="ch" style="--d:${i++}">${esc(ch)}</span>`)
+            .join("");
+          return `<span class="word">${letters}</span>`;
+        })
+        .join(" ");
+      // Screen readers get the plain name rather than one letter at a time.
       title.setAttribute("aria-label", SITE.name);
+      $$(".ch", title).forEach((el) => el.setAttribute("aria-hidden", "true"));
+    }
+
+    // Terminal-style status strip above the name. Everything here is derived,
+    // so it stays true as projects are added — no hard-coded year to go stale.
+    const readout = $("[data-readout]");
+    if (readout) {
+      const years = items.map((p) => p.year).filter(Boolean);
+      const span = years.length
+        ? `${Math.min(...years)}–${Math.max(...years)}`
+        : "";
+
+      const bits = [
+        SITE.location ? `[ LOC ] ${SITE.location}` : "",
+        `[ IDX ] ${String(items.length).padStart(2, "0")} WORKS`,
+        span ? `[ SPAN ] ${span}` : "",
+      ].filter(Boolean);
+
+      // Each segment is its own element so CSS can drop the last one on narrow
+      // screens rather than letting the whole strip clip mid-word.
+      readout.innerHTML =
+        "┌ " +
+        bits
+          .map((b, i) =>
+            `<span class="readout__i">${i ? "<i>  ·  </i>" : ""}${esc(b)}</span>`
+          )
+          .join("") +
+        " ┐";
     }
 
     // The social row appears in both the hero and the contact block.
@@ -167,19 +311,32 @@
     }
 
     // Hero reel — only built when SITE.reel holds a real video.
-    const reelHost = $("[data-hero-reel]");
+    // Hero background video. Silent, looping, non-interactive.
+    const bgHost = $("[data-hero-bg]");
     const reel = parseVideo(SITE.reel);
-    if (reelHost) {
-      if (reel.provider) {
-        // Hero reel does not autoplay — strip that param from the shared URL.
-        const src = embedUrl(reel.provider, reel.id).replace("autoplay=1&", "");
-        reelHost.innerHTML =
-          `<iframe src="${esc(src)}"` +
-          ` title="${esc(SITE.name)} — Showreel" loading="lazy" allowfullscreen` +
-          ` allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"></iframe>`;
-      } else {
-        reelHost.remove();
-        $$('[data-needs-reel]').forEach((el) => el.remove());
+    if (bgHost) {
+      if (reel.provider && !reduceMotion) {
+        // Poster first, so there is imagery even if autoplay never fires.
+        setHeroPoster(bgHost, reel.provider, reel.id);
+
+        bgHost.insertAdjacentHTML("beforeend",
+          reel.provider === "youtube"
+            ? `<div class="hero__bg-frame"><div data-yt-mount></div></div>`
+            : `<div class="hero__bg-frame">` +
+                `<iframe src="${esc(bgEmbedUrl(reel.provider, reel.id))}"` +
+                ` title="" tabindex="-1" aria-hidden="true" frameborder="0"` +
+                ` allow="autoplay; encrypted-media; picture-in-picture"></iframe>` +
+              `</div>`);
+
+        document.body.classList.add("has-hero-video");
+        startHeroVideo(bgHost, reel.provider, reel.id);
+      } else if (reel.provider && reduceMotion) {
+        // Motion is unwelcome, but a still frame is not.
+        setHeroPoster(bgHost, reel.provider, reel.id);
+        document.body.classList.add("has-hero-video");
+      } else if (!reel.provider) {
+        // No reel configured — drop anything that depends on one.
+        $$("[data-needs-reel]").forEach((el) => el.remove());
       }
     }
   }
@@ -231,7 +388,7 @@
       const found = CATEGORIES.find((c) => c.id === cat);
       const text = found
         ? found.blurb
-        : "Everything, newest first. Filter by craft above.";
+        : "Everything, newest first. Filter by discipline above.";
       blurb.classList.add("is-swapping");
       window.setTimeout(() => {
         blurb.textContent = text;
@@ -515,8 +672,42 @@
   }
 
   function step(delta) {
+    // current is -1 while the standalone showreel is open — nothing to step to.
+    if (current < 0) return;
     const next = current + delta;
     if (next >= 0 && next < visible.length) paintLightbox(next);
+  }
+
+  /**
+   * The showreel is not one of the PROJECTS, so it gets its own open path:
+   * same panel, but with prev/next disabled since there is nothing to step to.
+   */
+  function openReel() {
+    const reel = parseVideo(SITE.reel);
+    if (!reel.provider) return;
+
+    lastFocused = document.activeElement;
+    current = -1;
+
+    lb.root.hidden = false;
+    document.body.classList.add("is-locked");
+
+    lb.stage.innerHTML =
+      `<iframe src="${esc(embedUrl(reel.provider, reel.id))}"` +
+      ` title="${esc(SITE.name)} — Showreel" allowfullscreen` +
+      ` allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"></iframe>`;
+
+    lb.info.innerHTML =
+      `<div><h2 class="lb__title" id="lb-title">Showreel</h2>` +
+      `<p class="lb__blurb">${esc(SITE.name)} — ${esc(SITE.role)}</p></div>`;
+
+    lb.prev.disabled = true;
+    lb.next.disabled = true;
+
+    requestAnimationFrame(() => {
+      lb.root.classList.add("is-open");
+      lb.close.focus();
+    });
   }
 
   function wireLightbox() {
@@ -525,7 +716,8 @@
     // Open from any card
     document.addEventListener("click", (e) => {
       const btn = e.target.closest("[data-open]");
-      if (btn) openLightbox(btn.dataset.open);
+      if (btn) { openLightbox(btn.dataset.open); return; }
+      if (e.target.closest("[data-open-reel]")) openReel();
     });
 
     lb.close.addEventListener("click", closeLightbox);
