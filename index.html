@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>Burak Koç — Filmmaker &amp; Motion Designer</title>
+<meta name="description" content="Filmmaker and motion designer working across live action, Unreal Engine, motion design and 2D character animation.">
+<meta name="theme-color" content="#09090a">
+<meta name="color-scheme" content="dark">
+
+<!-- Social sharing. Swap assets/img/og.jpg for a frame from your own reel. -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Burak Koç">
+<meta property="og:url" content="https://aburakkoc.com/">
+<meta property="og:title" content="Burak Koç — Filmmaker &amp; Motion Designer">
+<meta property="og:description" content="Filmmaker and motion designer working across live action, Unreal Engine, motion design and 2D character animation.">
+<meta property="og:image" content="https://aburakkoc.com/assets/img/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Burak Koç — Filmmaker &amp; Motion Designer">
+<meta name="twitter:description" content="Filmmaker and motion designer working across live action, Unreal Engine, motion design and 2D character animation.">
+<meta name="twitter:image" content="https://aburakkoc.com/assets/img/og.jpg">
+
+<link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+<link rel="canonical" href="https://aburakkoc.com/">
+
+<!-- Fonts: preconnect first so the handshake overlaps the CSS download. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://i.ytimg.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@200;300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<!-- Bump ?v= when you change CSS or JS, to push past browser caches. -->
+<link rel="stylesheet" href="assets/css/style.css?v=2">
+</head>
+
+<body>
+
+<a class="skip" href="#work">Skip to work</a>
+
+<div class="progress" data-progress aria-hidden="true"></div>
+<div class="grain" aria-hidden="true"></div>
+<div class="vignette" aria-hidden="true"></div>
+
+<!-- ======================= HEADER ======================= -->
+<header class="header" data-header>
+  <div class="wrap header__inner">
+    <a class="brand" href="#top" data-site-name>Portfolio</a>
+
+    <nav class="nav" aria-label="Primary">
+      <a class="nav__link" href="#work">Work</a>
+      <a class="nav__link" href="#about" data-hide-sm>About</a>
+      <a class="nav__cta" href="#contact">Contact</a>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+
+  <!-- ======================= HERO ======================= -->
+  <section class="hero">
+    <div class="wrap hero__inner">
+
+      <div>
+        <h1 class="hero__title" data-hero-title>Portfolio</h1>
+      </div>
+
+      <!-- Only rendered when SITE.reel is set in data.js -->
+      <div class="hero__reel" data-hero-reel></div>
+
+      <div class="hero__meta">
+        <div>
+          <span class="eyebrow hero__role" data-site-role>Filmmaker &amp; Motion Designer</span>
+          <p class="hero__statement" data-site-statement></p>
+        </div>
+
+        <div class="hero__links" data-site-links></div>
+      </div>
+
+      <div class="scroll-hint" aria-hidden="true">
+        <span class="scroll-hint__line"></span>
+        <span class="eyebrow">Scroll</span>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ======================= WORK ======================= -->
+  <section class="section" id="work">
+    <div class="wrap">
+
+      <div class="section__head reveal">
+        <h2 class="section__title">Selected Work</h2>
+        <span class="section__count" data-work-count></span>
+      </div>
+
+      <!-- Filter buttons are generated from CATEGORIES in data.js -->
+      <div class="filters" data-filters role="group" aria-label="Filter work by craft"></div>
+
+      <p class="filters-blurb" data-filters-blurb>Everything, newest first. Filter by craft above.</p>
+
+      <!-- Project cards are generated from PROJECTS in data.js -->
+      <div class="grid" data-grid></div>
+
+    </div>
+  </section>
+
+  <!-- ======================= ABOUT ======================= -->
+  <section class="section" id="about">
+    <div class="wrap">
+
+      <div class="section__head reveal">
+        <h2 class="section__title">About</h2>
+        <span class="section__count" data-site-location></span>
+      </div>
+
+      <div class="about reveal">
+        <div>
+          <!-- Edit this lead paragraph and the two below directly. -->
+          <p class="about__lead">
+            I direct and animate. Half the job is deciding which of those a project
+            actually needs.
+          </p>
+
+          <div class="about__body">
+            <p>
+              My work sits where live action meets animation. Some projects start on
+              set and finish in an engine; others never leave the timeline. The
+              through-line is that the technique follows the idea, not the reverse.
+            </p>
+            <p>
+              Replace this paragraph with your own background &mdash; how you work,
+              who you work with, and what you want more of.
+            </p>
+          </div>
+        </div>
+
+        <div>
+          <span class="eyebrow">Capabilities</span>
+          <ul class="services" data-site-services></ul>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ======================= CONTACT ======================= -->
+  <section class="section contact" id="contact">
+    <div class="wrap">
+      <span class="eyebrow">Available for commissions</span>
+      <br>
+      <a class="contact__mail" data-site-email href="#">hello@example.com</a>
+
+      <div class="hero__links" data-site-links></div>
+
+      <footer class="footer">
+        <span class="eyebrow">&copy; <span data-year></span> <span data-site-name></span></span>
+        <span class="eyebrow" data-site-location></span>
+      </footer>
+    </div>
+  </section>
+
+</main>
+
+<!-- ======================= LIGHTBOX ======================= -->
+<div class="lb" data-lb hidden role="dialog" aria-modal="true" aria-labelledby="lb-title">
+  <div class="lb__scrim" data-lb-scrim></div>
+
+  <div class="lb__panel" data-lb-panel>
+    <button class="lb__close" type="button" data-lb-close>
+      Close
+      <svg width="11" height="11" viewBox="0 0 11 11" aria-hidden="true">
+        <path d="M1 1l9 9M10 1l-9 9" stroke="currentColor" stroke-width="1.5" fill="none"/>
+      </svg>
+    </button>
+
+    <div class="lb__stage" data-lb-stage></div>
+
+    <div class="lb__info" data-lb-info></div>
+
+    <div class="lb__bar">
+      <span class="eyebrow">Esc to close &nbsp;&middot;&nbsp; &larr; &rarr; to browse</span>
+      <div class="lb__nav">
+        <button class="lb__btn" type="button" data-lb-prev>&larr; Prev</button>
+        <button class="lb__btn" type="button" data-lb-next>Next &rarr;</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="assets/js/data.js?v=2"></script>
+<script src="assets/js/main.js?v=2"></script>
+
+</body>
+</html>
