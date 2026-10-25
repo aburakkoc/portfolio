@@ -423,7 +423,8 @@
           `<button class="filter" type="button" data-cat="${esc(b.id)}"` +
           ` style="--fi:${i}" aria-pressed="${b.id === activeCat}">` +
           `<span class="filter__t">${esc(b.label)}</span>` +
-          `<span class="filter__n">${counts[b.id]}</span></button>`
+          `<span class="filter__n">${counts[b.id]}</span>` +
+          `<span class="crt" aria-hidden="true"></span></button>`
       )
       .join("");
 
@@ -432,18 +433,37 @@
       if (btn) setCategory(btn.dataset.cat);
     });
 
-    // Replay the left-to-right cascade each time the pointer enters the bar.
-    // Removing the class and forcing a reflow is what lets the animation
-    // restart; without the reflow the browser coalesces both changes and
-    // nothing happens on the second pass.
-    if (!reduceMotion && window.matchMedia("(hover: hover)").matches) {
-      bar.addEventListener("pointerenter", () => {
-        bar.classList.remove("is-live");
-        void bar.offsetWidth;
-        bar.classList.add("is-live");
-      });
-      bar.addEventListener("pointerleave", () => bar.classList.remove("is-live"));
-    }
+  }
+
+  /**
+   * Points each CRT overlay's ripple at wherever the pointer crossed into the
+   * element, so the screen appears to clear from under the cursor rather than
+   * always from the middle. Delegated at the document level because cards are
+   * rebuilt on every filter change.
+   */
+  function wireCrtRipple() {
+    if (reduceMotion || !window.matchMedia("(hover: hover)").matches) return;
+
+    document.addEventListener("pointerover", (e) => {
+      // A card's stretched link sits on top of the media and is its sibling,
+      // not its child — so resolve up to the card first, then back down to
+      // the media box. Going straight for .card__media never matches.
+      const card = e.target.closest(".card");
+      const host = card ? $(".card__media", card) : e.target.closest(".filter");
+      if (!host) return;
+
+      const crt = $(".crt", host);
+      if (!crt) return;
+
+      const r = host.getBoundingClientRect();
+      if (!r.width || !r.height) return;
+
+      const x = ((e.clientX - r.left) / r.width) * 100;
+      const y = ((e.clientY - r.top) / r.height) * 100;
+
+      crt.style.setProperty("--crt-x", x.toFixed(1) + "%");
+      crt.style.setProperty("--crt-y", y.toFixed(1) + "%");
+    });
   }
 
   function setCategory(cat) {
@@ -497,6 +517,7 @@
       `<article class="card${p.featured ? " is-featured" : ""}" style="--i:${i}">` +
         `<div class="card__media">` +
           thumb + badge +
+          `<span class="crt" aria-hidden="true"></span>` +
           `<span class="card__play"><span>` +
             `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>` +
           `</span></span>` +
@@ -533,8 +554,37 @@
 
     fillVimeoThumbs(grid);
 
-    // Let the browser paint the start state, then trigger the staggered entrance.
+    // On the very first render the grid is below the fold, so holding the
+    // entrance until it scrolls into view means the cards actually arrive
+    // with the reader instead of having played out unseen. Re-filters animate
+    // straight away — by then the grid is what you are looking at.
     const cards = $$(".card", grid);
+
+    if (gridSeen || reduceMotion || !("IntersectionObserver" in window)) {
+      enterCards(cards);
+    } else {
+      if (gridObserver) gridObserver.disconnect();
+      gridObserver = new IntersectionObserver(
+        (entries, obs) => {
+          if (!entries.some((en) => en.isIntersecting)) return;
+          gridSeen = true;
+          obs.disconnect();
+          enterCards($$(".card", grid));
+        },
+        { rootMargin: "0px 0px -8% 0px", threshold: 0.04 }
+      );
+      gridObserver.observe(grid);
+    }
+
+    // Lets the magnetic hover drop its cached geometry for the old cards.
+    grid.dispatchEvent(new CustomEvent("grid:rendered"));
+  }
+
+  let gridSeen = false;
+  let gridObserver = null;
+
+  function enterCards(cards) {
+    // Paint the start state first, then trigger the staggered entrance.
     requestAnimationFrame(() => {
       requestAnimationFrame(() => cards.forEach((c) => c.classList.add("is-in")));
     });
@@ -542,9 +592,6 @@
     // Hand over to the hover transition once the entrance stagger is done.
     const settleIn = Math.min(650 + cards.length * 45, 2400);
     window.setTimeout(() => cards.forEach((c) => c.classList.add("is-settled")), settleIn);
-
-    // Lets the magnetic hover drop its cached geometry for the old cards.
-    grid.dispatchEvent(new CustomEvent("grid:rendered"));
   }
 
   /**
@@ -989,7 +1036,7 @@
   }
 
   function wireReveals() {
-    const targets = $$(".reveal, .reveal-words, .elsewhere");
+    const targets = $$(".reveal, .reveal-words, .elsewhere, .filters");
     if (!targets.length) return;
 
     if (reduceMotion || !("IntersectionObserver" in window)) {
@@ -1020,6 +1067,7 @@
   buildFilters();
   renderGrid();
   wireHoverPreview();
+  wireCrtRipple();
   wireMagneticGrid();
   wireLightbox();
   wireScroll();
