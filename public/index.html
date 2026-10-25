@@ -33,7 +33,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&family=Share+Tech+Mono&family=Inter+Tight:wght@200;300;400;500;600&display=swap" rel="stylesheet">
 
 <!-- Bump ?v= when you change CSS or JS, to push past browser caches. -->
-<link rel="stylesheet" href="assets/css/style.css?v=16">
+<link rel="stylesheet" href="assets/css/style.css?v=17">
 </head>
 
 <body>
@@ -94,8 +94,6 @@
             </button>
           </div>
         </div>
-
-        <div class="hero__links" data-site-links></div>
       </div>
 
       <div class="scroll-hint" aria-hidden="true">
@@ -110,8 +108,14 @@
        Held back from the hero deliberately: the first screen is just the name
        over the reel. This reveals on the first scroll. -->
   <section class="statement">
-    <div class="wrap">
-      <p class="statement__text reveal" data-site-statement></p>
+    <div class="wrap statement__inner">
+      <p class="statement__text" data-statement-words></p>
+
+      <!-- Fills the dead column beside the statement. Built from SITE.links. -->
+      <nav class="elsewhere" aria-label="Elsewhere">
+        <span class="eyebrow elsewhere__label">Elsewhere</span>
+        <ul data-site-links-list></ul>
+      </nav>
     </div>
   </section>
 
@@ -218,8 +222,8 @@
   </div>
 </div>
 
-<script src="assets/js/data.js?v=16"></script>
-<script src="assets/js/main.js?v=16"></script>
+<script src="assets/js/data.js?v=17"></script>
+<script src="assets/js/main.js?v=17"></script>
 
 </body>
 </html>

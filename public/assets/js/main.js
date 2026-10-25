@@ -252,6 +252,17 @@
     $$("[data-site-name]").forEach((el) => { el.textContent = SITE.name; });
     $$("[data-site-role]").forEach((el) => { el.textContent = SITE.role; });
     $$("[data-site-statement]").forEach((el) => { el.textContent = SITE.statement; });
+
+    // The statement resolves word by word as it scrolls into view. Each word is
+    // its own element so the stagger can run off a CSS index rather than a
+    // timer, which keeps it in step with the scroll reveal.
+    $$("[data-statement-words]").forEach((el) => {
+      el.classList.add("reveal-words");
+      el.innerHTML = SITE.statement
+        .split(/\s+/)
+        .map((w, i) => `<span class="w" style="--w:${i}">${esc(w)}</span>`)
+        .join(" ");
+    });
     $$("[data-site-location]").forEach((el) => { el.textContent = SITE.location; });
     $$("[data-year]").forEach((el) => { el.textContent = new Date().getFullYear(); });
 
@@ -309,15 +320,30 @@
         " ┐";
     }
 
-    // The social row appears in both the hero and the contact block.
     if (Array.isArray(SITE.links)) {
-      const markup = SITE.links
+      // Pill row — used in the contact block.
+      const pills = SITE.links
         .map(
           (l) =>
             `<a class="pill" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${esc(l.label)}</a>`
         )
         .join("");
-      $$("[data-site-links]").forEach((el) => { el.innerHTML = markup; });
+      $$("[data-site-links]").forEach((el) => { el.innerHTML = pills; });
+
+      // Numbered list — fills the column beside the statement.
+      const rows = SITE.links
+        .map(
+          (l, i) =>
+            `<li style="--li:${i}">` +
+              `<a class="elsewhere__link" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">` +
+                `<span class="elsewhere__n">${String(i + 1).padStart(2, "0")}</span>` +
+                `<span class="elsewhere__name">${esc(l.label)}</span>` +
+                `<span class="elsewhere__arrow" aria-hidden="true">&#8599;</span>` +
+              `</a>` +
+            `</li>`
+        )
+        .join("");
+      $$("[data-site-links-list]").forEach((el) => { el.innerHTML = rows; });
     }
 
     const services = $("[data-site-services]");
@@ -395,7 +421,8 @@
       .map(
         (b, i) =>
           `<button class="filter" type="button" data-cat="${esc(b.id)}"` +
-          ` style="--fi:${i}" aria-pressed="${b.id === activeCat}">${esc(b.label)}` +
+          ` style="--fi:${i}" aria-pressed="${b.id === activeCat}">` +
+          `<span class="filter__t">${esc(b.label)}</span>` +
           `<span class="filter__n">${counts[b.id]}</span></button>`
       )
       .join("");
@@ -962,7 +989,7 @@
   }
 
   function wireReveals() {
-    const targets = $$(".reveal");
+    const targets = $$(".reveal, .reveal-words, .elsewhere");
     if (!targets.length) return;
 
     if (reduceMotion || !("IntersectionObserver" in window)) {

@@ -467,9 +467,6 @@ ul, ol { list-style: none; }
   line-height: 1.02;
   letter-spacing: -.01em;
   text-transform: uppercase;
-  /* Syncopate ships upright only, so this is a synthetic oblique. At this size
-     it reads as intentional italic rather than a browser fudge. */
-  font-style: italic;
   animation: crt-flicker 6.5s steps(1) infinite;
 }
 
@@ -486,57 +483,33 @@ ul, ol { list-style: none; }
   99%           { opacity: .92; }
 }
 
-/* ---- Kinetic reveal ----
-   Letters rise, rotate and overshoot into place, left to right. The energy
-   comes from the 58% keyframe, which travels past the resting position and
-   settles back — a straight ease to the end reads as a slide, not a snap. */
+/* ---- Rack-focus reveal ----
+   Letters fade up out of defocus, left to right. The faint scale-down as each
+   one sharpens is what sells it as a lens pulling focus rather than a plain
+   fade — without it the blur just looks like a slow render. */
 .hero__title .ch {
   display: inline-block;
   opacity: 0;
-  transform-origin: 50% 90%;
+  filter: blur(14px);
 }
 
 .hero__title.is-revealed .ch {
-  animation: ch-kinetic .78s cubic-bezier(.19, 1, .3, 1) forwards;
-  animation-delay: calc(var(--d, 0) * 42ms + 80ms);
+  animation: ch-focus 1.15s cubic-bezier(.22, 1, .36, 1) forwards;
+  animation-delay: calc(var(--d, 0) * 58ms + 120ms);
 }
 
-@keyframes ch-kinetic {
+@keyframes ch-focus {
   0% {
     opacity: 0;
-    transform: translate3d(0, .9em, 0) rotate(-11deg) scale(.78);
+    filter: blur(15px);
+    transform: scale(1.045);
   }
-  58% {
-    opacity: 1;
-    transform: translate3d(0, -.1em, 0) rotate(3deg) scale(1.07);
-  }
-  78% {
-    transform: translate3d(0, .02em, 0) rotate(-1deg) scale(.985);
-  }
+  60% { opacity: 1; }
   100% {
     opacity: 1;
+    filter: blur(0);
     transform: none;
   }
-}
-
-/* Underline that draws itself across once the letters have landed. */
-.hero__title.is-revealed::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  bottom: -.1em;
-  height: 2px;
-  width: 100%;
-  background: var(--accent);
-  transform-origin: 0 50%;
-  animation: title-rule .9s cubic-bezier(.19, 1, .3, 1) forwards;
-  animation-delay: .5s;
-}
-
-@keyframes title-rule {
-  0%   { transform: scaleX(0); opacity: 0; }
-  30%  { opacity: 1; }
-  100% { transform: scaleX(1); opacity: .55; }
 }
 
 .hero__meta {
@@ -553,6 +526,20 @@ ul, ol { list-style: none; }
   padding-block: clamp(3.5rem, 2rem + 7vw, 9rem);
 }
 
+.statement__inner {
+  display: grid;
+  gap: clamp(2.5rem, 5vw, 5rem);
+}
+
+/* The statement never filled the full width, so the spare column now carries
+   the profile links instead of sitting empty. */
+@media (min-width: 900px) {
+  .statement__inner {
+    grid-template-columns: minmax(0, 1.5fr) minmax(220px, .7fr);
+    align-items: start;
+  }
+}
+
 .statement__text {
   max-width: 34ch;
   font-size: clamp(1.15rem, .75rem + 1.7vw, 2.25rem);
@@ -564,8 +551,100 @@ ul, ol { list-style: none; }
 }
 
 @media (min-width: 900px) {
-  .statement__text { max-width: 24ch; font-size: clamp(1.6rem, .9rem + 1.9vw, 2.6rem); }
+  .statement__text { font-size: clamp(1.5rem, .9rem + 1.7vw, 2.4rem); }
 }
+
+/* Word-by-word resolve, same defocus treatment as the name so the two read
+   as one idea. Runs off the scroll observer, not a timer. */
+.reveal-words .w {
+  display: inline-block;
+  opacity: 0;
+  filter: blur(9px);
+  transform: translateY(.32em);
+}
+
+.reveal-words.is-in .w {
+  animation: word-focus .85s cubic-bezier(.22, 1, .36, 1) forwards;
+  animation-delay: calc(var(--w, 0) * 26ms);
+}
+
+@keyframes word-focus {
+  to { opacity: 1; filter: blur(0); transform: none; }
+}
+
+/* ---- Elsewhere list ---- */
+.elsewhere__label { display: block; margin-bottom: 1.1rem; }
+
+.elsewhere ul { display: grid; }
+
+.elsewhere li {
+  opacity: 0;
+  transform: translateX(14px);
+  transition: opacity .6s var(--ease), transform .6s var(--ease);
+  transition-delay: calc(var(--li, 0) * 70ms);
+}
+.elsewhere.is-in li { opacity: 1; transform: none; }
+
+.elsewhere__link {
+  position: relative;
+  display: flex;
+  align-items: baseline;
+  gap: .8rem;
+  padding-block: .72rem;
+  border-top: 1px solid var(--line);
+  color: var(--ink-2);
+  transition: color .35s var(--ease), padding-left .35s var(--ease);
+}
+.elsewhere li:last-child .elsewhere__link { border-bottom: 1px solid var(--line); }
+
+/* Amber rule that wipes in from the left, echoing the filter pills. */
+.elsewhere__link::before {
+  content: "";
+  position: absolute;
+  left: 0; top: -1px;
+  height: 1px; width: 100%;
+  background: var(--accent);
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  transition: transform .5s var(--ease);
+}
+
+.elsewhere__n {
+  font-family: var(--mono);
+  font-size: var(--t-xs);
+  color: var(--ink-3);
+  transition: color .35s var(--ease);
+}
+
+.elsewhere__name {
+  flex: 1;
+  font-size: var(--t-lg);
+  font-weight: 300;
+  letter-spacing: -.01em;
+}
+
+.elsewhere__arrow {
+  font-size: var(--t-base);
+  opacity: 0;
+  transform: translate(-6px, 4px);
+  transition: opacity .35s var(--ease), transform .35s var(--ease);
+}
+
+/* Hovering the list focuses one row and recedes the others. */
+.elsewhere:hover .elsewhere__link { opacity: .45; }
+
+.elsewhere__link:hover,
+.elsewhere__link:focus-visible {
+  opacity: 1;
+  color: var(--accent);
+  padding-left: .55rem;
+}
+.elsewhere__link:hover::before,
+.elsewhere__link:focus-visible::before { transform: scaleX(1); }
+.elsewhere__link:hover .elsewhere__n,
+.elsewhere__link:focus-visible .elsewhere__n { color: var(--accent); }
+.elsewhere__link:hover .elsewhere__arrow,
+.elsewhere__link:focus-visible .elsewhere__arrow { opacity: 1; transform: none; }
 
 .hero__role {
   display: block;
@@ -737,6 +816,53 @@ ul, ol { list-style: none; }
 .filter:not([aria-pressed="true"]):hover {
   color: var(--on-accent);
   border-color: var(--accent);
+}
+
+/* ---- CRT resolution reveal ----
+   Two layers run together on hover: the label clears from defocus, and a
+   block grid laid over the pill shrinks its cell size. Both use steps(), so
+   the label snaps through a handful of discrete resolutions rather than
+   easing smoothly — that stepping is what reads as a signal resolving
+   instead of a blur fading out. */
+.filter__t {
+  display: inline-block;
+  will-change: filter;
+}
+
+.filter:not([aria-pressed="true"]):hover .filter__t {
+  animation: crt-resolve .6s steps(5) forwards;
+}
+
+@keyframes crt-resolve {
+  0%   { filter: blur(3.4px) contrast(3.2) brightness(1.45); }
+  45%  { filter: blur(1.7px) contrast(2) brightness(1.2); }
+  75%  { filter: blur(.8px) contrast(1.35) brightness(1.08); }
+  100% { filter: none; }
+}
+
+/* The mosaic grid itself. Cell size animates large to small. */
+.filter::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  opacity: 0;
+  pointer-events: none;
+  background-image:
+    repeating-linear-gradient(90deg, rgba(9, 9, 10, .62) 0 50%, transparent 50% 100%),
+    repeating-linear-gradient(0deg,  rgba(9, 9, 10, .62) 0 50%, transparent 50% 100%);
+  background-size: 2px 2px;
+}
+
+.filter:not([aria-pressed="true"]):hover::after {
+  animation: mosaic-resolve .6s steps(5) forwards;
+}
+
+@keyframes mosaic-resolve {
+  0%   { opacity: .92; background-size: 11px 11px; }
+  45%  { opacity: .7;  background-size: 7px 7px; }
+  75%  { opacity: .38; background-size: 4px 4px; }
+  100% { opacity: 0;   background-size: 2px 2px; }
 }
 
 /* Hovering anywhere in the bar focuses the one under the cursor. */
@@ -1273,10 +1399,18 @@ ul, ol { list-style: none; }
     transition-delay: 0ms !important;
   }
 
-  /* Anything that animates in should simply be visible */
-  .reveal, .card, .lb__panel { opacity: 1; transform: none; }
-  .hero__title .ch { opacity: 1; transform: none; animation: none; }
-  .hero__title.is-revealed::after { display: none; }
+  /* Anything that animates in should simply be visible — including the two
+     defocus reveals, whose resting state is blurred, not just transparent. */
+  .reveal, .card, .lb__panel, .elsewhere li { opacity: 1; transform: none; }
+  .hero__title .ch,
+  .reveal-words .w {
+    opacity: 1;
+    transform: none;
+    filter: none;
+    animation: none;
+  }
+  .filter__t { filter: none; animation: none; }
+  .filter::after { display: none; }
   .grain { display: none; }
 
   /* CRT motion is decorative — drop the moving parts, keep the static
